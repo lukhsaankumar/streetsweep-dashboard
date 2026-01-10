@@ -1,5 +1,5 @@
 import { useAccessibility } from '@/hooks/useAccessibility';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Contrast, Type, LogOut, Leaf } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';

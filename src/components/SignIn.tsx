@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Leaf, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function SignIn() {
   const [name, setName] = useState('');

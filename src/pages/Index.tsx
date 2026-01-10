@@ -1,4 +1,4 @@
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { SignIn } from '@/components/SignIn';
 import { Dashboard } from '@/components/Dashboard';
 import { TicketsProvider } from '@/contexts/TicketsContext';

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useTickets } from '@/contexts/TicketsContext';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Ticket, TicketPriority } from '@/data/dummyTickets';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
