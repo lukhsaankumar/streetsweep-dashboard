@@ -8,17 +8,11 @@ import { useAuth } from '@/hooks/useAuth';
 export function SignIn() {
   const [name, setName] = useState('');
   const { signIn } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    
-    setIsLoading(true);
-    // Simulate brief loading
-    setTimeout(() => {
-      signIn(name.trim());
-    }, 300);
+    signIn(name.trim());
   };
 
   return (
@@ -88,27 +82,16 @@ export function SignIn() {
                 onChange={(e) => setName(e.target.value)}
                 className="h-12 bg-muted border-border text-lg focus-ring"
                 autoFocus
-                disabled={isLoading}
               />
             </div>
 
             <Button
               type="submit"
-              disabled={!name.trim() || isLoading}
+              disabled={!name.trim()}
               className="w-full h-12 text-lg gap-2 glow-primary"
             >
-              {isLoading ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full"
-                />
-              ) : (
-                <>
-                  Continue
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
+              Continue
+              <ArrowRight className="w-5 h-5" />
             </Button>
           </form>
 

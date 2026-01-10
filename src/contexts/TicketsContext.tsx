@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { Ticket, TicketState, TicketPriority, calculateLeaderboard, VolunteerStats } from '@/data/dummyTickets';
+import { Ticket, TicketState, TicketPriority, calculateLeaderboard, VolunteerStats, dummyLeaderboard } from '@/data/dummyTickets';
 import { getTickets, TicketFilters, claimTicket, unclaimTicket, completeTicket, getDashboardStats, DashboardStats, Subscription, getSubscriptions, addSubscription, removeSubscription } from '@/services/api';
 
 interface TicketsContextType {
@@ -28,7 +28,7 @@ export function TicketsProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<TicketFilters>({ sortBy: 'severity' });
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [leaderboard, setLeaderboard] = useState<VolunteerStats[]>([]);
+  const [leaderboard, setLeaderboard] = useState<VolunteerStats[]>(dummyLeaderboard);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
 
   const refreshTickets = useCallback(async () => {
