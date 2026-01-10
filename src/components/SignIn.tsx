@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Leaf, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,12 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export function SignIn() {
   const [name, setName] = useState('');
+  const [mounted, setMounted] = useState(false);
   const { signIn } = useAuth();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,29 +26,31 @@ export function SignIn() {
       <div className="absolute inset-0 gradient-radial opacity-50" />
       
       {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(5)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-64 h-64 rounded-full bg-primary/5"
-            initial={{ 
-              x: Math.random() * window.innerWidth, 
-              y: Math.random() * window.innerHeight,
-              scale: 0.5 + Math.random() * 0.5,
-            }}
-            animate={{
-              x: [null, Math.random() * window.innerWidth],
-              y: [null, Math.random() * window.innerHeight],
-            }}
-            transition={{
-              duration: 20 + Math.random() * 10,
-              repeat: Infinity,
-              repeatType: 'reverse',
-              ease: 'linear',
-            }}
-          />
-        ))}
-      </div>
+      {mounted && (
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(5)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-64 h-64 rounded-full bg-primary/5"
+              initial={{ 
+                x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1000), 
+                y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 800),
+                scale: 0.5 + Math.random() * 0.5,
+              }}
+              animate={{
+                x: [null, Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1000)],
+                y: [null, Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 800)],
+              }}
+              transition={{
+                duration: 20 + Math.random() * 10,
+                repeat: Infinity,
+                repeatType: 'reverse',
+                ease: 'linear',
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
