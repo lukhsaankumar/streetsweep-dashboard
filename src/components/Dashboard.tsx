@@ -1,48 +1,111 @@
-import { useState } from 'react';
-import { useTickets } from '@/contexts/TicketsContext';
+import { useState, useEffect, useCallback } from 'react';
 import { Header } from '@/components/Header';
-import { Filters } from '@/components/Filters';
 import { TicketCard } from '@/components/TicketCard';
 import { MapView } from '@/components/MapView';
 import { TicketDetailDrawer } from '@/components/TicketDetailDrawer';
-import { StatsCards } from '@/components/StatsCards';
 import { Leaderboard } from '@/components/Leaderboard';
-import { AdoptArea } from '@/components/AdoptArea';
-import { TrendChart, TopCamerasChart } from '@/components/Charts';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
   Map, 
   Trophy, 
-  MapPin,
   TrendingUp,
-  Camera,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Loader2,
+  Recycle,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Ticket, VolunteerStats, dummyLeaderboard, dummyTickets } from '@/data/dummyTickets';
 
-type Tab = 'tickets' | 'insights' | 'leaderboard' | 'adopt';
+type Tab = 'tickets' | 'insights' | 'leaderboard';
 
 interface DashboardProps {
   userName: string;
   onSignOut: () => void;
 }
 
+const STORAGE_KEY = 'streetsweep_tickets';
+
+function getStoredTickets(): Ticket[] {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored) return JSON.parse(stored);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(dummyTickets));
+  return dummyTickets;
+}
+
+function saveTickets(tickets: Ticket[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+}
+
 export function Dashboard({ userName, onSignOut }: DashboardProps) {
-  const { tickets, selectedTicket, selectTicket, isLoading } = useTickets();
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('tickets');
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [leaderboard] = useState<VolunteerStats[]>(dummyLeaderboard);
+
+  useEffect(() => {
+    const loaded = getStoredTickets();
+    setTickets(loaded);
+    setIsLoading(false);
+  }, []);
+
+  const refreshTickets = useCallback(() => {
+    const loaded = getStoredTickets();
+    setTickets(loaded);
+    if (selectedTicket) {
+      const updated = loaded.find(t => t.id === selectedTicket.id);
+      if (updated) setSelectedTicket(updated);
+    }
+  }, [selectedTicket]);
+
+  const claimTicket = useCallback((id: string) => {
+    const updated = tickets.map(t => 
+      t.id === id ? { ...t, state: 'CLAIMED' as const, claimedBy: userName, claimedAt: new Date().toISOString() } : t
+    );
+    saveTickets(updated);
+    setTickets(updated);
+    const found = updated.find(t => t.id === id);
+    if (found) setSelectedTicket(found);
+  }, [tickets, userName]);
+
+  const unclaimTicket = useCallback((id: string) => {
+    const updated = tickets.map(t => 
+      t.id === id ? { ...t, state: 'OPEN' as const, claimedBy: undefined, claimedAt: undefined } : t
+    );
+    saveTickets(updated);
+    setTickets(updated);
+    const found = updated.find(t => t.id === id);
+    if (found) setSelectedTicket(found);
+  }, [tickets]);
+
+  const completeTicket = useCallback((id: string, afterImageUrl: string) => {
+    const updated = tickets.map(t => 
+      t.id === id ? { ...t, state: 'COMPLETED' as const, afterImageUrl, completedAt: new Date().toISOString() } : t
+    );
+    saveTickets(updated);
+    setTickets(updated);
+    const found = updated.find(t => t.id === id);
+    if (found) setSelectedTicket(found);
+  }, [tickets]);
+
+  const stats = {
+    totalOpen: tickets.filter(t => t.state === 'OPEN').length,
+    totalClaimed: tickets.filter(t => t.state === 'CLAIMED').length,
+    totalCompleted: tickets.filter(t => t.state === 'COMPLETED').length,
+  };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'tickets', label: 'Tickets', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'insights', label: 'Insights', icon: <TrendingUp className="w-4 h-4" /> },
     { id: 'leaderboard', label: 'Leaders', icon: <Trophy className="w-4 h-4" /> },
-    { id: 'adopt', label: 'Adopt', icon: <MapPin className="w-4 h-4" /> },
   ];
 
   return (
@@ -71,12 +134,11 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-colors focus-ring",
+                    "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-colors",
                     activeTab === tab.id
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
-                  aria-pressed={activeTab === tab.id}
                 >
                   {tab.icon}
                   <span className="hidden sm:inline">{tab.label}</span>
@@ -89,8 +151,24 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                 {/* Tickets Tab */}
                 {activeTab === 'tickets' && (
                   <div className="space-y-4">
-                    <StatsCards />
-                    <Filters />
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="p-3 bg-muted rounded-lg text-center">
+                        <AlertCircle className="w-5 h-5 mx-auto mb-1 text-orange-500" />
+                        <p className="text-lg font-bold">{stats.totalOpen}</p>
+                        <p className="text-xs text-muted-foreground">Open</p>
+                      </div>
+                      <div className="p-3 bg-muted rounded-lg text-center">
+                        <Recycle className="w-5 h-5 mx-auto mb-1 text-blue-500" />
+                        <p className="text-lg font-bold">{stats.totalClaimed}</p>
+                        <p className="text-xs text-muted-foreground">Claimed</p>
+                      </div>
+                      <div className="p-3 bg-muted rounded-lg text-center">
+                        <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-green-500" />
+                        <p className="text-lg font-bold">{stats.totalCompleted}</p>
+                        <p className="text-xs text-muted-foreground">Done</p>
+                      </div>
+                    </div>
                     
                     {isLoading ? (
                       <div className="py-12 flex flex-col items-center text-muted-foreground">
@@ -100,7 +178,7 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                     ) : tickets.length === 0 ? (
                       <div className="py-12 text-center text-muted-foreground">
                         <Map className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                        <p>No tickets match your filters</p>
+                        <p>No tickets found</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -117,7 +195,7 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                             <TicketCard
                               ticket={ticket}
                               isSelected={selectedTicket?.id === ticket.id}
-                              onClick={() => selectTicket(ticket)}
+                              onClick={() => setSelectedTicket(ticket)}
                             />
                           </motion.div>
                         ))}
@@ -129,27 +207,23 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                 {/* Insights Tab */}
                 {activeTab === 'insights' && (
                   <div className="space-y-6">
-                    <StatsCards />
-                    
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4" />
-                        Ticket Trends
-                      </h3>
-                      <div className="p-4 bg-muted rounded-lg">
-                        <TrendChart />
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="p-3 bg-muted rounded-lg text-center">
+                        <p className="text-lg font-bold">{stats.totalOpen}</p>
+                        <p className="text-xs text-muted-foreground">Open</p>
+                      </div>
+                      <div className="p-3 bg-muted rounded-lg text-center">
+                        <p className="text-lg font-bold">{stats.totalClaimed}</p>
+                        <p className="text-xs text-muted-foreground">Claimed</p>
+                      </div>
+                      <div className="p-3 bg-muted rounded-lg text-center">
+                        <p className="text-lg font-bold">{stats.totalCompleted}</p>
+                        <p className="text-xs text-muted-foreground">Done</p>
                       </div>
                     </div>
-
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                        <Camera className="w-4 h-4" />
-                        Top Cameras
-                      </h3>
-                      <div className="p-4 bg-muted rounded-lg">
-                        <TopCamerasChart />
-                      </div>
-                    </div>
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      Charts coming soon...
+                    </p>
                   </div>
                 )}
 
@@ -160,21 +234,7 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                       <Trophy className="w-5 h-5 text-primary" />
                       <h2 className="font-semibold text-foreground">Volunteer Leaderboard</h2>
                     </div>
-                    <Leaderboard />
-                  </div>
-                )}
-
-                {/* Adopt Tab */}
-                {activeTab === 'adopt' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 pb-2 border-b border-border">
-                      <MapPin className="w-5 h-5 text-primary" />
-                      <h2 className="font-semibold text-foreground">Adopt-a-Block</h2>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Subscribe to areas near you to stay informed about litter in your neighborhood.
-                    </p>
-                    <AdoptArea />
+                    <Leaderboard leaderboard={leaderboard} />
                   </div>
                 )}
               </div>
@@ -189,7 +249,6 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
           onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
           className="absolute left-0 top-1/2 -translate-y-1/2 z-30 rounded-l-none border-l-0 bg-card h-16"
           style={{ left: leftPanelCollapsed ? 0 : 420 }}
-          aria-label={leftPanelCollapsed ? 'Show panel' : 'Hide panel'}
         >
           {leftPanelCollapsed ? (
             <ChevronRight className="w-4 h-4" />
@@ -201,13 +260,25 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
         {/* Map */}
         <main className="flex-1 h-[calc(100vh-4rem)] p-4">
           <MapView 
+            tickets={tickets}
+            selectedTicket={selectedTicket}
+            onSelectTicket={setSelectedTicket}
             showHeatmap={showHeatmap} 
             onToggleHeatmap={() => setShowHeatmap(!showHeatmap)} 
           />
         </main>
 
         {/* Ticket Detail Drawer */}
-        {selectedTicket && <TicketDetailDrawer userName={userName} />}
+        {selectedTicket && (
+          <TicketDetailDrawer 
+            userName={userName}
+            ticket={selectedTicket}
+            onClose={() => setSelectedTicket(null)}
+            onClaim={() => claimTicket(selectedTicket.id)}
+            onUnclaim={() => unclaimTicket(selectedTicket.id)}
+            onComplete={(afterImageUrl) => completeTicket(selectedTicket.id, afterImageUrl)}
+          />
+        )}
       </div>
     </div>
   );

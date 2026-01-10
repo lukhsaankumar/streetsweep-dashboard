@@ -1,18 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Dashboard } from '@/components/Dashboard';
-import { TicketsProvider } from '@/contexts/TicketsContext';
 import { Loader2, Leaf, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-// Simple user list - in a real app this would be from an API/database
+// Simple user list
 const ALLOWED_USERS = ['lukhsaan', 'admin', 'test'];
-
 const AUTH_KEY = 'streetsweep_user';
 
 const Index = () => {
   const [user, setUser] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
 
@@ -21,7 +19,7 @@ const Index = () => {
     if (stored) {
       setUser(stored);
     }
-    setIsLoading(false);
+    setIsAuthLoading(false);
   }, []);
 
   const handleSignIn = (e: React.FormEvent) => {
@@ -42,7 +40,7 @@ const Index = () => {
     setUser(null);
   };
 
-  if (isLoading) {
+  if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -95,11 +93,7 @@ const Index = () => {
     );
   }
 
-  return (
-    <TicketsProvider>
-      <Dashboard userName={user} onSignOut={handleSignOut} />
-    </TicketsProvider>
-  );
+  return <Dashboard userName={user} onSignOut={handleSignOut} />;
 };
 
 export default Index;

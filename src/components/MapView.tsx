@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useTickets } from '@/contexts/TicketsContext';
 import { Ticket, TicketPriority } from '@/data/dummyTickets';
-import { Locate, Layers, Flame } from 'lucide-react';
+import { Locate, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -89,13 +88,14 @@ function LocateButton() {
 }
 
 interface MapViewProps {
+  tickets: Ticket[];
+  selectedTicket: Ticket | null;
+  onSelectTicket: (ticket: Ticket) => void;
   showHeatmap?: boolean;
   onToggleHeatmap?: () => void;
 }
 
-export function MapView({ showHeatmap, onToggleHeatmap }: MapViewProps) {
-  const { tickets, selectedTicket, selectTicket, subscriptions } = useTickets();
-  
+export function MapView({ tickets, selectedTicket, onSelectTicket, showHeatmap, onToggleHeatmap }: MapViewProps) {
   // Center on NYC by default
   const center: [number, number] = useMemo(() => {
     if (tickets.length === 0) return [40.7128, -74.0060];
@@ -139,22 +139,6 @@ export function MapView({ showHeatmap, onToggleHeatmap }: MapViewProps) {
         <MapController selectedTicket={selectedTicket} />
         <LocateButton />
 
-        {/* Subscribed areas */}
-        {subscriptions.map((sub) => (
-          <Circle
-            key={sub.id}
-            center={[sub.lat, sub.lng]}
-            radius={sub.radius}
-            pathOptions={{
-              color: '#22c55e',
-              fillColor: '#22c55e',
-              fillOpacity: 0.1,
-              weight: 2,
-              dashArray: '5, 5',
-            }}
-          />
-        ))}
-
         {/* Heatmap overlay (simplified) */}
         {showHeatmap && tickets.map((ticket) => (
           <Circle
@@ -177,7 +161,7 @@ export function MapView({ showHeatmap, onToggleHeatmap }: MapViewProps) {
             position={[ticket.lat, ticket.lng]}
             icon={createPriorityIcon(ticket.priority, selectedTicket?.id === ticket.id)}
             eventHandlers={{
-              click: () => selectTicket(ticket),
+              click: () => onSelectTicket(ticket),
             }}
           >
             <Popup>

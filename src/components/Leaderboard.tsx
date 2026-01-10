@@ -1,7 +1,7 @@
-import { useTickets } from '@/contexts/TicketsContext';
 import { motion } from 'framer-motion';
 import { Trophy, Medal, Star, Award, Leaf, Sprout } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { VolunteerStats } from '@/data/dummyTickets';
 
 const badgeIcons: Record<string, React.ReactNode> = {
   'Eco Legend': <Trophy className="w-4 h-4 text-yellow-500" />,
@@ -12,15 +12,16 @@ const badgeIcons: Record<string, React.ReactNode> = {
   'Rookie Cleaner': <Sprout className="w-4 h-4 text-lime-500" />,
 };
 
-export function Leaderboard() {
-  const { leaderboard } = useTickets();
+interface LeaderboardProps {
+  leaderboard: VolunteerStats[];
+}
 
+export function Leaderboard({ leaderboard }: LeaderboardProps) {
   if (leaderboard.length === 0) {
     return (
       <div className="p-6 text-center text-muted-foreground">
         <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
         <p className="text-sm">No completed cleanups yet.</p>
-        <p className="text-xs mt-1">Be the first to claim and complete a ticket!</p>
       </div>
     );
   }
@@ -38,7 +39,6 @@ export function Leaderboard() {
             index === 0 ? "bg-primary/10 border border-primary/30" : "bg-muted"
           )}
         >
-          {/* Rank */}
           <div className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
             index === 0 ? "bg-primary text-primary-foreground" :
@@ -49,7 +49,6 @@ export function Leaderboard() {
             {index + 1}
           </div>
 
-          {/* Info */}
           <div className="flex-1 min-w-0">
             <p className="font-medium text-foreground truncate">{volunteer.name}</p>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -58,7 +57,6 @@ export function Leaderboard() {
             </div>
           </div>
 
-          {/* Stats */}
           <div className="text-right">
             <p className="font-bold text-primary">{volunteer.completedTickets}</p>
             <p className="text-xs text-muted-foreground">cleanups</p>
