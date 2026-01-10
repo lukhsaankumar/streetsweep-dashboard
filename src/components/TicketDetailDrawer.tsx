@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
-import { useTickets } from '@/contexts/TicketsContext';
-import { TicketPriority } from '@/data/dummyTickets';
+import { Ticket, TicketPriority } from '@/data/dummyTickets';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -33,17 +32,18 @@ const afterImages = [
 
 interface TicketDetailDrawerProps {
   userName: string;
+  ticket: Ticket;
+  onClose: () => void;
+  onClaim: () => void;
+  onUnclaim: () => void;
+  onComplete: (afterImageUrl: string) => void;
 }
 
-export function TicketDetailDrawer({ userName }: TicketDetailDrawerProps) {
-  const { selectedTicket, selectTicket, claimTicketAction, unclaimTicketAction, completeTicketAction } = useTickets();
+export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUnclaim, onComplete }: TicketDetailDrawerProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showAfterImageSelect, setShowAfterImageSelect] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!selectedTicket) return null;
-
-  const ticket = selectedTicket;
   const priority = priorityConfig[ticket.priority];
   const isClaimedByMe = ticket.claimedBy?.toLowerCase() === userName.toLowerCase();
 
@@ -57,50 +57,35 @@ export function TicketDetailDrawer({ userName }: TicketDetailDrawerProps) {
     });
   };
 
-  const handleClaim = async () => {
+  const handleClaim = () => {
     setIsLoading(true);
-    try {
-      const success = await claimTicketAction(ticket.id, userName);
-      if (success) {
-        toast({
-          title: 'Ticket Claimed!',
-          description: `You've claimed "${ticket.title}". Head to the location to clean it up!`,
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    onClaim();
+    toast({
+      title: 'Ticket Claimed!',
+      description: `You've claimed "${ticket.title}". Head to the location to clean it up!`,
+    });
+    setIsLoading(false);
   };
 
-  const handleUnclaim = async () => {
+  const handleUnclaim = () => {
     setIsLoading(true);
-    try {
-      const success = await unclaimTicketAction(ticket.id, userName);
-      if (success) {
-        toast({
-          title: 'Ticket Released',
-          description: 'The ticket is now available for others.',
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    onUnclaim();
+    toast({
+      title: 'Ticket Released',
+      description: 'The ticket is now available for others.',
+    });
+    setIsLoading(false);
   };
 
-  const handleComplete = async (afterImageUrl: string) => {
+  const handleComplete = (afterImageUrl: string) => {
     setIsLoading(true);
-    try {
-      const success = await completeTicketAction(ticket.id, userName, afterImageUrl);
-      if (success) {
-        toast({
-          title: '🎉 Cleanup Complete!',
-          description: `Amazing work! You've helped remove ${ticket.numDetections} pieces of litter.`,
-        });
-        setShowAfterImageSelect(false);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    onComplete(afterImageUrl);
+    toast({
+      title: '🎉 Cleanup Complete!',
+      description: `Amazing work! You've helped remove ${ticket.numDetections} pieces of litter.`,
+    });
+    setShowAfterImageSelect(false);
+    setIsLoading(false);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,22 +104,13 @@ export function TicketDetailDrawer({ userName }: TicketDetailDrawerProps) {
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className="fixed right-0 top-0 h-full w-full max-w-md bg-card border-l border-border shadow-2xl z-50 overflow-hidden flex flex-col"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="ticket-detail-title"
       >
         {/* Header */}
         <div className="p-4 border-b border-border flex items-center justify-between">
           <span className={cn("px-3 py-1 rounded-full text-sm font-medium border", priority.className)}>
             {priority.label}
           </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => selectTicket(null)}
-            aria-label="Close ticket details"
-            className="focus-ring"
-          >
+          <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="w-5 h-5" />
           </Button>
         </div>
@@ -169,9 +145,7 @@ export function TicketDetailDrawer({ userName }: TicketDetailDrawerProps) {
 
           {/* Title & Description */}
           <div>
-            <h2 id="ticket-detail-title" className="text-xl font-bold text-foreground mb-2">
-              {ticket.title}
-            </h2>
+            <h2 className="text-xl font-bold text-foreground mb-2">{ticket.title}</h2>
             <p className="text-muted-foreground">{ticket.description}</p>
           </div>
 
@@ -224,7 +198,7 @@ export function TicketDetailDrawer({ userName }: TicketDetailDrawerProps) {
             </div>
           </div>
 
-          {/* Claimed/Completed Info */}
+          {/* Claimed Info */}
           {ticket.claimedBy && (
             <div className="p-4 bg-muted rounded-lg">
               <div className="flex items-center gap-3">
@@ -243,11 +217,6 @@ export function TicketDetailDrawer({ userName }: TicketDetailDrawerProps) {
                     {ticket.state === 'COMPLETED' ? 'Completed' : 'Claimed'}{' '}
                     {formatDate(ticket.completedAt || ticket.claimedAt!)}
                   </p>
-                  {ticket.squad && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Squad: {ticket.squad.members.join(', ')}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
@@ -267,7 +236,7 @@ export function TicketDetailDrawer({ userName }: TicketDetailDrawerProps) {
                     key={img}
                     onClick={() => handleComplete(img)}
                     disabled={isLoading}
-                    className="relative rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors focus-ring"
+                    className="relative rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors"
                   >
                     <img src={img} alt={`After option ${i + 1}`} className="w-full h-20 object-cover" />
                   </button>
@@ -297,12 +266,7 @@ export function TicketDetailDrawer({ userName }: TicketDetailDrawerProps) {
         {/* Actions */}
         <div className="p-4 border-t border-border bg-card">
           {ticket.state === 'OPEN' && (
-            <Button
-              onClick={handleClaim}
-              disabled={isLoading}
-              className="w-full gap-2 glow-primary"
-              size="lg"
-            >
+            <Button onClick={handleClaim} disabled={isLoading} className="w-full gap-2" size="lg">
               <ChevronRight className="w-5 h-5" />
               Claim This Ticket
             </Button>
@@ -310,18 +274,13 @@ export function TicketDetailDrawer({ userName }: TicketDetailDrawerProps) {
 
           {ticket.state === 'CLAIMED' && isClaimedByMe && (
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={handleUnclaim}
-                disabled={isLoading}
-                className="flex-1"
-              >
+              <Button variant="outline" onClick={handleUnclaim} disabled={isLoading} className="flex-1">
                 Release
               </Button>
               <Button
                 onClick={() => setShowAfterImageSelect(!showAfterImageSelect)}
                 disabled={isLoading}
-                className="flex-1 gap-2 glow-primary"
+                className="flex-1 gap-2"
               >
                 <Check className="w-5 h-5" />
                 Complete
