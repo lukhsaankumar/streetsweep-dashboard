@@ -1,13 +1,16 @@
 import { useAccessibility } from '@/hooks/useAccessibility';
-import { useAuth } from '@/contexts/AuthContext';
 import { Contrast, Type, LogOut, Leaf } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
-export function Header() {
+interface HeaderProps {
+  userName: string;
+  onSignOut: () => void;
+}
+
+export function Header({ userName, onSignOut }: HeaderProps) {
   const { highContrast, largeText, toggleHighContrast, toggleLargeText } = useAccessibility();
-  const { user, signOut } = useAuth();
 
   return (
     <header className="h-16 border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40">
@@ -70,23 +73,21 @@ export function Header() {
           </div>
 
           {/* User */}
-          {user && (
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:block text-right">
-                <p className="text-sm font-medium text-foreground">{user.name}</p>
-                <p className="text-xs text-muted-foreground">Volunteer</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={signOut}
-                className="text-muted-foreground hover:text-foreground"
-                aria-label="Sign out"
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:block text-right">
+              <p className="text-sm font-medium text-foreground capitalize">{userName}</p>
+              <p className="text-xs text-muted-foreground">Volunteer</p>
             </div>
-          )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onSignOut}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </header>
