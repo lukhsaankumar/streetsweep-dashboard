@@ -176,6 +176,17 @@ export interface VolunteerStats {
   badge: string;
 }
 
+export const dummyLeaderboard: VolunteerStats[] = [
+  { name: 'Maria Santos', completedTickets: 47, totalDetections: 892, badge: 'Cleanup Captain' },
+  { name: 'Alex Green', completedTickets: 38, totalDetections: 654, badge: 'Cleanup Captain' },
+  { name: 'Jordan Lee', completedTickets: 29, totalDetections: 423, badge: 'Cleanup Captain' },
+  { name: 'Sam Wilson', completedTickets: 18, totalDetections: 287, badge: 'Eco Hero' },
+  { name: 'Taylor Chen', completedTickets: 12, totalDetections: 198, badge: 'Eco Hero' },
+  { name: 'Casey Rivera', completedTickets: 8, totalDetections: 134, badge: 'Green Champion' },
+  { name: 'Morgan Park', completedTickets: 5, totalDetections: 76, badge: 'Green Champion' },
+  { name: 'Riley Kim', completedTickets: 3, totalDetections: 41, badge: 'Earth Guardian' },
+];
+
 export function calculateLeaderboard(tickets: Ticket[]): VolunteerStats[] {
   const completedTickets = tickets.filter(t => t.state === 'COMPLETED' && t.claimedBy);
   
