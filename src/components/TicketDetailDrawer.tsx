@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { useTickets } from '@/contexts/TicketsContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { Ticket, TicketPriority } from '@/data/dummyTickets';
+import { TicketPriority } from '@/data/dummyTickets';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -32,9 +31,12 @@ const afterImages = [
   '/dummy_images/litter-4-after.jpg',
 ];
 
-export function TicketDetailDrawer() {
+interface TicketDetailDrawerProps {
+  userName: string;
+}
+
+export function TicketDetailDrawer({ userName }: TicketDetailDrawerProps) {
   const { selectedTicket, selectTicket, claimTicketAction, unclaimTicketAction, completeTicketAction } = useTickets();
-  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showAfterImageSelect, setShowAfterImageSelect] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -43,7 +45,7 @@ export function TicketDetailDrawer() {
 
   const ticket = selectedTicket;
   const priority = priorityConfig[ticket.priority];
-  const isClaimedByMe = ticket.claimedBy === user?.name;
+  const isClaimedByMe = ticket.claimedBy?.toLowerCase() === userName.toLowerCase();
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('en-US', {
@@ -56,10 +58,9 @@ export function TicketDetailDrawer() {
   };
 
   const handleClaim = async () => {
-    if (!user) return;
     setIsLoading(true);
     try {
-      const success = await claimTicketAction(ticket.id, user.name);
+      const success = await claimTicketAction(ticket.id, userName);
       if (success) {
         toast({
           title: 'Ticket Claimed!',
@@ -72,10 +73,9 @@ export function TicketDetailDrawer() {
   };
 
   const handleUnclaim = async () => {
-    if (!user) return;
     setIsLoading(true);
     try {
-      const success = await unclaimTicketAction(ticket.id, user.name);
+      const success = await unclaimTicketAction(ticket.id, userName);
       if (success) {
         toast({
           title: 'Ticket Released',
@@ -88,10 +88,9 @@ export function TicketDetailDrawer() {
   };
 
   const handleComplete = async (afterImageUrl: string) => {
-    if (!user) return;
     setIsLoading(true);
     try {
-      const success = await completeTicketAction(ticket.id, user.name, afterImageUrl);
+      const success = await completeTicketAction(ticket.id, userName, afterImageUrl);
       if (success) {
         toast({
           title: '🎉 Cleanup Complete!',

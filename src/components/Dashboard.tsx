@@ -27,7 +27,12 @@ import { cn } from '@/lib/utils';
 
 type Tab = 'tickets' | 'insights' | 'leaderboard' | 'adopt';
 
-export function Dashboard() {
+interface DashboardProps {
+  userName: string;
+  onSignOut: () => void;
+}
+
+export function Dashboard({ userName, onSignOut }: DashboardProps) {
   const { tickets, selectedTicket, selectTicket, isLoading } = useTickets();
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('tickets');
@@ -42,7 +47,7 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header />
+      <Header userName={userName} onSignOut={onSignOut} />
 
       <div className="flex-1 flex relative">
         {/* Left Panel */}
@@ -202,7 +207,7 @@ export function Dashboard() {
         </main>
 
         {/* Ticket Detail Drawer */}
-        {selectedTicket && <TicketDetailDrawer />}
+        {selectedTicket && <TicketDetailDrawer userName={userName} />}
       </div>
     </div>
   );
