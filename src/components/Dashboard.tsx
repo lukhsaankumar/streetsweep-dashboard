@@ -507,6 +507,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
         {selectedTicket && (
           <TicketDetailDrawer 
             userName={userName}
+            userId={user._id}
             ticket={selectedTicket}
             onClose={() => setSelectedTicket(null)}
             onClaim={(squad) => claimTicket(selectedTicket.id, squad)}
@@ -785,6 +786,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
       {selectedTicket && (
         <TicketDetailDrawer 
           userName={userName}
+          userId={user._id}
           ticket={selectedTicket}
           onClose={() => setSelectedTicket(null)}
           onClaim={(squad) => claimTicket(selectedTicket.id, squad)}

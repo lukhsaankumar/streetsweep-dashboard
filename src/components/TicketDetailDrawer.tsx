@@ -36,6 +36,7 @@ const afterImages = [
 
 interface TicketDetailDrawerProps {
   userName: string;
+  userId: string;
   ticket: Ticket;
   onClose: () => void;
   onClaim: (squad?: Squad) => void;
@@ -43,7 +44,7 @@ interface TicketDetailDrawerProps {
   onComplete: (afterImageUrl: string) => void;
 }
 
-export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUnclaim, onComplete }: TicketDetailDrawerProps) {
+export function TicketDetailDrawer({ userName, userId, ticket, onClose, onClaim, onUnclaim, onComplete }: TicketDetailDrawerProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showAfterImageSelect, setShowAfterImageSelect] = useState(false);
   const [showSquadForm, setShowSquadForm] = useState(false);
@@ -53,7 +54,8 @@ export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUncla
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const priority = priorityConfig[ticket.priority];
-  const isClaimedByMe = ticket.claimedBy?.toLowerCase() === userName.toLowerCase();
+  // Compare by user ID instead of name
+  const isClaimedByMe = ticket.claimedBy === userId;
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('en-US', {
