@@ -1,12 +1,15 @@
-import { LogOut, Leaf } from 'lucide-react';
+import { LogOut, Leaf, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface HeaderProps {
   userName: string;
   onSignOut: () => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
-export function Header({ userName, onSignOut }: HeaderProps) {
+export function Header({ userName, onSignOut, onRefresh, isRefreshing }: HeaderProps) {
   return (
     <header className="h-16 border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40">
       <div className="h-full px-4 md:px-6 flex items-center justify-between max-w-[1800px] mx-auto">
@@ -23,6 +26,18 @@ export function Header({ userName, onSignOut }: HeaderProps) {
 
         {/* User */}
         <div className="flex items-center gap-3">
+          {onRefresh && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Refresh data"
+            >
+              <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+            </Button>
+          )}
           <div className="hidden sm:block text-right">
             <p className="text-sm font-medium text-foreground capitalize">{userName}</p>
             <p className="text-xs text-muted-foreground">Volunteer</p>

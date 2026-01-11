@@ -1,46 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dashboard } from '@/components/Dashboard';
-import { Loader2, Leaf, ArrowRight } from 'lucide-react';
+import { Loader2, Leaf, ArrowRight, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
-// Simple user list
-const ALLOWED_USERS = ['lukhsaan', 'admin', 'test'];
-const AUTH_KEY = 'streetsweep_user';
+import { Label } from '@/components/ui/label';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
-  const [user, setUser] = useState<string | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const { user, isLoading, isAuthenticated, login, signup, logout } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    const stored = localStorage.getItem(AUTH_KEY);
-    if (stored) {
-      setUser(stored);
-    }
-    setIsAuthLoading(false);
-  }, []);
-
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedName = name.trim().toLowerCase();
-    
-    if (ALLOWED_USERS.includes(trimmedName)) {
-      localStorage.setItem(AUTH_KEY, trimmedName);
-      setUser(trimmedName);
-      setError('');
-    } else {
-      setError('User not found. Try: lukhsaan');
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      if (isSignUp) {
+        if (!name.trim()) {
+          setError('Name is required');
+          setIsSubmitting(false);
+          return;
+        }
+        await signup(name.trim(), email.trim(), password);
+      } else {
+        await login(email.trim(), password);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem(AUTH_KEY);
-    setUser(null);
-  };
-
-  if (isAuthLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -48,7 +46,7 @@ const Index = () => {
     );
   }
 
-  if (!user) {
+  if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-md">
@@ -61,18 +59,49 @@ const Index = () => {
               StreetSweep AI
             </h1>
             <p className="text-center text-muted-foreground mb-6">
-              Enter your name to continue
+              {isSignUp ? 'Create your account' : 'Sign in to continue'}
             </p>
 
-            <form onSubmit={handleSignIn} className="space-y-4">
-              <Input
-                type="text"
-                placeholder="Enter your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-12"
-                autoFocus
-              />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Your full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isSubmitting}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isSubmitting}
+                  required
+                />
+              </div>
               
               {error && (
                 <p className="text-sm text-destructive text-center">{error}</p>
@@ -80,20 +109,44 @@ const Index = () => {
 
               <Button
                 type="submit"
-                disabled={!name.trim()}
+                disabled={isSubmitting || !email.trim() || !password}
                 className="w-full h-12 gap-2"
               >
-                Continue
-                <ArrowRight className="w-5 h-5" />
+                {isSubmitting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : isSignUp ? (
+                  <>
+                    <UserPlus className="w-5 h-5" />
+                    Create Account
+                  </>
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
               </Button>
             </form>
+
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError('');
+                }}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  return <Dashboard userName={user} onSignOut={handleSignOut} />;
+  return <Dashboard user={user} onSignOut={logout} />;
 };
 
 export default Index;
