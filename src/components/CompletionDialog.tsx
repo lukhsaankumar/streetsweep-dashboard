@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 interface CompletionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onComplete: (afterImageFile: File) => Promise<{ success: boolean; result?: any }>;
+  onComplete: (afterImageFile: File) => Promise<{ success: boolean; result?: any; pointsEarned?: number; halfPointsAwarded?: number }>;
   onReclaim?: () => void;
   onRelease?: () => void;
   ticketTitle: string;
@@ -27,6 +27,7 @@ export function CompletionDialog({ open, onOpenChange, onComplete, onReclaim, on
   const [showResult, setShowResult] = useState(false);
   const [resultSuccess, setResultSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [halfPointsAwarded, setHalfPointsAwarded] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,7 +55,8 @@ export function CompletionDialog({ open, onOpenChange, onComplete, onReclaim, on
         onOpenChange(false);
         resetState();
       } else {
-        // Failed - show result screen
+        // Failed - show result screen with half points info
+        setHalfPointsAwarded(result.halfPointsAwarded || null);
         setResultSuccess(false);
         setShowResult(true);
       }
@@ -67,6 +69,7 @@ export function CompletionDialog({ open, onOpenChange, onComplete, onReclaim, on
     setUploadedPreview(null);
     setShowResult(false);
     setResultSuccess(false);
+    setHalfPointsAwarded(null);
   };
 
   const handleClose = () => {
@@ -104,7 +107,9 @@ export function CompletionDialog({ open, onOpenChange, onComplete, onReclaim, on
                 You missed some spots
               </p>
               <p className="text-sm text-muted-foreground">
-                The ticket has been updated based on what you missed. You can reclaim it to finish the job or release it for someone else.
+                {halfPointsAwarded 
+                  ? `You earned ${halfPointsAwarded} points for your effort! Complete the remaining cleanup to earn ${halfPointsAwarded} more points.`
+                  : 'The ticket has been updated based on what you missed. You can reclaim it to finish the job or release it for someone else.'}
               </p>
             </div>
 

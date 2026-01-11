@@ -37,6 +37,16 @@ interface DashboardProps {
   onSignOut: () => void;
 }
 
+// Points calculation based on priority
+const POINTS_CONFIG = {
+  HIGH: { full: 6, half: 3 },
+  MEDIUM: { full: 4, half: 2 },
+  LOW: { full: 2, half: 1 },
+};
+
+// Track tickets that had failed cleanup attempts (for remaining points calculation)
+const failedCleanupAttempts = new Set<string>();
+
 export function Dashboard({ user, onSignOut }: DashboardProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -230,7 +240,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
     }
   }, [user._id, fetchTickets]);
 
-  const completeTicket = useCallback(async (id: string, afterImageFile: File): Promise<{ success: boolean; result?: any }> => {
+  const completeTicket = useCallback(async (id: string, afterImageFile: File): Promise<{ success: boolean; result?: any; pointsEarned?: number; halfPointsAwarded?: number }> => {
     try {
       const ticket = tickets.find(t => t.id === id);
       if (!ticket) {
@@ -240,6 +250,9 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
       // Compare images and upload
       const result = await compareImages(ticket.beforeImageUrl, afterImageFile, id);
       
+      const pointsConfig = POINTS_CONFIG[ticket.priority];
+      const hadPreviousFailure = failedCleanupAttempts.has(id);
+      
       // Check if comparison was successful (returns true) or if it's an object with details
       if (result === true || (typeof result === 'object' && result.same_location && result.cleanup_successful)) {
         // Perfect match - same location and cleanup successful
@@ -248,20 +261,43 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
         // Fetch updated tickets from backend after completion
         await fetchTickets();
         
+        // Calculate points earned
+        const pointsEarned = hadPreviousFailure ? pointsConfig.half : pointsConfig.full;
+        const pointsMessage = hadPreviousFailure 
+          ? `You earned ${pointsConfig.half} additional points (${pointsConfig.full} total for this ticket)!`
+          : `You earned ${pointsConfig.full} points!`;
+        
+        // Remove from failed attempts tracking
+        failedCleanupAttempts.delete(id);
+        
         toast({
           title: '🎉 Cleanup Complete!',
-          description: 'Amazing work! Thank you for helping clean up the community.',
+          description: `Amazing work! ${pointsMessage}`,
         });
         
         // Refresh leaderboard after completion
         fetchLeaderboard(leaderboardPage);
         
-        return { success: true };
+        return { success: true, pointsEarned };
       } else {
-        // Cleanup not successful - ticket updated but not resolved
+        // Cleanup not successful - award half points
+        const halfPoints = pointsConfig.half;
+        
+        // Track this failed attempt
+        failedCleanupAttempts.add(id);
+        
+        // Fetch updated tickets from backend
         await fetchTickets();
         
-        return { success: false, result };
+        // Refresh leaderboard to show half points awarded
+        fetchLeaderboard(leaderboardPage);
+        
+        toast({
+          title: 'Partial Cleanup',
+          description: `You earned ${halfPoints} points for your effort. Complete the remaining cleanup to earn ${halfPoints} more!`,
+        });
+        
+        return { success: false, result, halfPointsAwarded: halfPoints };
       }
     } catch (error) {
       console.error('Failed to complete ticket:', error);
