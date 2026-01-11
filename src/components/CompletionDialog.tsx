@@ -12,13 +12,14 @@ import { cn } from '@/lib/utils';
 interface CompletionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onComplete: (afterImageUrl: string) => void;
+  onComplete: (afterImageFile: File) => void;
   ticketTitle: string;
 }
 
 
 export function CompletionDialog({ open, onOpenChange, onComplete, ticketTitle }: CompletionDialogProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedPreview, setUploadedPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -31,17 +32,19 @@ export function CompletionDialog({ open, onOpenChange, onComplete, ticketTitle }
       setTimeout(() => {
         setUploadedPreview(url);
         setSelectedImage(url);
+        setSelectedFile(file);
         setIsUploading(false);
       }, 500);
     }
   };
 
   const handleSubmit = () => {
-    if (selectedImage) {
-      onComplete(selectedImage);
+    if (selectedFile) {
+      onComplete(selectedFile);
       onOpenChange(false);
       // Reset state
       setSelectedImage(null);
+      setSelectedFile(null);
       setUploadedPreview(null);
     }
   };
@@ -49,6 +52,7 @@ export function CompletionDialog({ open, onOpenChange, onComplete, ticketTitle }
   const handleClose = () => {
     onOpenChange(false);
     setSelectedImage(null);
+    setSelectedFile(null);
     setUploadedPreview(null);
   };
 
@@ -86,6 +90,7 @@ export function CompletionDialog({ open, onOpenChange, onComplete, ticketTitle }
                   onClick={() => {
                     setUploadedPreview(null);
                     setSelectedImage(null);
+                    setSelectedFile(null);
                     if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
                 >

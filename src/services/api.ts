@@ -298,6 +298,40 @@ export async function classifyImage(imageFile: File): Promise<ClassifyResponse> 
   return json;
 }
 
+export async function compareImages(
+  beforeImageUrl: string,
+  afterImageFile: File,
+  ticketId: string
+): Promise<boolean | { same_location: boolean; cleanup_successful: boolean; error?: string }> {
+  const token = getStoredToken();
+  const formData = new FormData();
+  
+  // Fetch the before image as a blob
+  const beforeResponse = await fetch(beforeImageUrl);
+  const beforeBlob = await beforeResponse.blob();
+  const beforeFile = new File([beforeBlob], 'before.jpg', { type: beforeBlob.type });
+  
+  formData.append('file1', beforeFile);
+  formData.append('file2', afterImageFile);
+  formData.append('ticket_id', ticketId);
+  
+  const res = await fetch(`${API_BASE_URL}/compare?ticket_id=${encodeURIComponent(ticketId)}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  
+  const json = await res.json();
+  
+  if (json.error) {
+    throw new Error(json.error);
+  }
+  
+  return json;
+}
+
 // ==================== HEALTH CHECK ====================
 
 export async function healthCheck(): Promise<boolean> {

@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import type { Ticket, TicketPriority, TicketState, Squad, User, LeaderboardEntry } from '@/types/api';
-import { getTickets, resolveTicket, getLeaderboard, getInsight, claimTicket as claimTicketApi } from '@/services/api';
+import { getTickets, resolveTicket, getLeaderboard, getInsight, claimTicket as claimTicketApi, compareImages } from '@/services/api';
 
 type Tab = 'tickets' | 'insights' | 'leaderboard';
 type MobileView = 'list' | 'map';
@@ -212,9 +212,33 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
     }
   }, [user._id, fetchTickets]);
 
-  const completeTicket = useCallback(async (id: string, afterImageUrl: string) => {
+  const completeTicket = useCallback(async (id: string, afterImageFile: File) => {
     try {
-      await resolveTicket({ ticket_id: id, user_id: user._id });
+      const ticket = tickets.find(t => t.id === id);
+      if (!ticket) {
+        throw new Error('Ticket not found');
+      }
+
+      // Compare images and upload
+      const result = await compareImages(ticket.beforeImageUrl, afterImageFile, id);
+      
+      // Check if comparison was successful (returns true) or if it's an object with details
+      if (result === true) {
+        // Perfect match - same location and cleanup successful
+        await resolveTicket({ ticket_id: id, user_id: user._id });
+      } else if (typeof result === 'object') {
+        // Got comparison details - still resolve the ticket
+        await resolveTicket({ ticket_id: id, user_id: user._id });
+        
+        // Show warning if location or cleanup verification failed
+        if (!result.same_location || !result.cleanup_successful) {
+          toast({
+            title: 'Warning',
+            description: 'Image verification had issues, but ticket was still marked complete.',
+            variant: 'default',
+          });
+        }
+      }
       
       // Fetch updated tickets from backend after completion
       await fetchTickets();
@@ -230,11 +254,11 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
       console.error('Failed to complete ticket:', error);
       toast({
         title: 'Error',
-        description: 'Failed to mark ticket as complete',
+        description: error instanceof Error ? error.message : 'Failed to mark ticket as complete',
         variant: 'destructive',
       });
     }
-  }, [user._id, fetchTickets, fetchLeaderboard, leaderboardPage]);
+  }, [tickets, user._id, fetchTickets, fetchLeaderboard, leaderboardPage]);
 
   const handleTicketCreated = useCallback((newTicket: Ticket) => {
     setTickets(prev => [newTicket, ...prev]);
@@ -512,7 +536,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
             onClose={() => setSelectedTicket(null)}
             onClaim={(squad) => claimTicket(selectedTicket.id, squad)}
             onUnclaim={() => unclaimTicket(selectedTicket.id)}
-            onComplete={(afterImageUrl) => completeTicket(selectedTicket.id, afterImageUrl)}
+            onComplete={(afterImageFile) => completeTicket(selectedTicket.id, afterImageFile)}
           />
         )}
       </>
@@ -791,7 +815,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
           onClose={() => setSelectedTicket(null)}
           onClaim={(squad) => claimTicket(selectedTicket.id, squad)}
           onUnclaim={() => unclaimTicket(selectedTicket.id)}
-          onComplete={(afterImageUrl) => completeTicket(selectedTicket.id, afterImageUrl)}
+          onComplete={(afterImageFile) => completeTicket(selectedTicket.id, afterImageFile)}
         />
       )}
     </>
