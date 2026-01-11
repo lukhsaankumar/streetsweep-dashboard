@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Ticket, TicketPriority, Squad } from '@/data/dummyTickets';
+import type { Ticket, TicketPriority, Squad } from '@/types/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -116,10 +116,6 @@ export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUncla
   const handleComplete = (afterImageUrl: string) => {
     setIsLoading(true);
     onComplete(afterImageUrl);
-    toast({
-      title: '🎉 Cleanup Complete!',
-      description: `Amazing work! You've helped remove ${ticket.numDetections} pieces of litter.`,
-    });
     setShowAfterImageSelect(false);
     setIsLoading(false);
   };
@@ -198,7 +194,7 @@ export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUncla
             <div className="p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
                 <Camera className="w-4 h-4" />
-                Camera
+                Location
               </div>
               <p className="font-medium text-foreground">{ticket.cameraName}</p>
             </div>
@@ -219,7 +215,7 @@ export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUncla
             <div className="p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
                 <MapPin className="w-4 h-4" />
-                Location
+                Coordinates
               </div>
               <a
                 href={`https://www.google.com/maps?q=${ticket.lat},${ticket.lng}`}
@@ -421,6 +417,12 @@ export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUncla
                 <Check className="w-5 h-5" />
                 Mark Complete
               </Button>
+            </div>
+          )}
+          
+          {ticket.state === 'CLAIMED' && isClaimedByMe && !showAfterImageSelect && (
+            <div className="text-center text-sm text-muted-foreground mt-2">
+              You have claimed this ticket
             </div>
           )}
 
