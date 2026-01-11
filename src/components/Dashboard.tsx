@@ -17,49 +17,44 @@ import {
   Recycle,
   CheckCircle2,
   AlertCircle,
-  Filter
+  Filter,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Ticket, VolunteerStats, Squad, TicketPriority, TicketState, dummyLeaderboard, dummyTickets } from '@/data/dummyTickets';
+import { toast } from '@/hooks/use-toast';
+import type { Ticket, TicketPriority, TicketState, Squad, User, LeaderboardEntry } from '@/types/api';
+import { getTickets, resolveTicket, getLeaderboard } from '@/services/api';
 
 type Tab = 'tickets' | 'insights' | 'leaderboard';
 type MobileView = 'list' | 'map';
 
 interface DashboardProps {
-  userName: string;
+  user: User;
   onSignOut: () => void;
 }
 
-const STORAGE_KEY = 'streetsweep_tickets';
-
-function getStoredTickets(): Ticket[] {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) return JSON.parse(stored);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(dummyTickets));
-  return dummyTickets;
-}
-
-function saveTickets(tickets: Ticket[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
-}
-
-export function Dashboard({ userName, onSignOut }: DashboardProps) {
+export function Dashboard({ user, onSignOut }: DashboardProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('tickets');
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
-  const [leaderboard] = useState<VolunteerStats[]>(dummyLeaderboard);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardPage, setLeaderboardPage] = useState(1);
+  const [leaderboardTotal, setLeaderboardTotal] = useState(0);
   const [mobileView, setMobileView] = useState<MobileView>('list');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const isMobile = useIsMobile();
   
   // Filter state - default: only OPEN selected, all priorities
   const [selectedStates, setSelectedStates] = useState<Set<TicketState>>(new Set(['OPEN']));
   const [selectedPriorities, setSelectedPriorities] = useState<Set<TicketPriority>>(new Set(['LOW', 'MEDIUM', 'HIGH']));
+
+  const userName = user.name;
 
   const toggleState = (state: TicketState) => {
     setSelectedStates(prev => {
@@ -93,22 +88,57 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
     });
   }, [tickets, selectedStates, selectedPriorities]);
 
-  useEffect(() => {
-    const loaded = getStoredTickets();
-    setTickets(loaded);
-    setIsLoading(false);
-  }, []);
-
-  const refreshTickets = useCallback(() => {
-    const loaded = getStoredTickets();
-    setTickets(loaded);
-    if (selectedTicket) {
-      const updated = loaded.find(t => t.id === selectedTicket.id);
-      if (updated) setSelectedTicket(updated);
+  const fetchTickets = useCallback(async () => {
+    try {
+      const data = await getTickets();
+      setTickets(data);
+      if (selectedTicket) {
+        const updated = data.find(t => t.id === selectedTicket.id);
+        if (updated) setSelectedTicket(updated);
+      }
+    } catch (error) {
+      console.error('Failed to fetch tickets:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load tickets',
+        variant: 'destructive',
+      });
     }
   }, [selectedTicket]);
 
+  const fetchLeaderboard = useCallback(async (page: number = 1) => {
+    try {
+      const data = await getLeaderboard(page, 10);
+      setLeaderboard(data.entries);
+      setLeaderboardTotal(data.total);
+      setLeaderboardPage(page);
+    } catch (error) {
+      console.error('Failed to fetch leaderboard:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      await Promise.all([fetchTickets(), fetchLeaderboard()]);
+      setIsLoading(false);
+    };
+    loadData();
+  }, [fetchTickets, fetchLeaderboard]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([fetchTickets(), fetchLeaderboard(leaderboardPage)]);
+    setIsRefreshing(false);
+    toast({
+      title: 'Refreshed',
+      description: 'Data updated successfully',
+    });
+  };
+
   const claimTicket = useCallback((id: string, squad?: Squad) => {
+    // Note: The current API doesn't have a claim endpoint, so we simulate locally
+    // In production, you'd call an API endpoint here
     const updated = tickets.map(t => 
       t.id === id ? { 
         ...t, 
@@ -118,37 +148,66 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
         squad: squad 
       } : t
     );
-    saveTickets(updated);
     setTickets(updated);
     const found = updated.find(t => t.id === id);
     if (found) setSelectedTicket(found);
+    
+    toast({
+      title: 'Ticket Claimed!',
+      description: `You've claimed this ticket. Head to the location to clean it up!`,
+    });
   }, [tickets, userName]);
 
   const unclaimTicket = useCallback((id: string) => {
+    // Note: The current API doesn't have an unclaim endpoint, so we simulate locally
     const updated = tickets.map(t => 
-      t.id === id ? { ...t, state: 'OPEN' as const, claimedBy: undefined, claimedAt: undefined } : t
+      t.id === id ? { ...t, state: 'OPEN' as const, claimedBy: undefined, claimedAt: undefined, squad: undefined } : t
     );
-    saveTickets(updated);
     setTickets(updated);
     const found = updated.find(t => t.id === id);
     if (found) setSelectedTicket(found);
+    
+    toast({
+      title: 'Ticket Released',
+      description: 'The ticket is now available for others.',
+    });
   }, [tickets]);
 
-  const completeTicket = useCallback((id: string, afterImageUrl: string) => {
-    const updated = tickets.map(t => 
-      t.id === id ? { ...t, state: 'COMPLETED' as const, afterImageUrl, completedAt: new Date().toISOString() } : t
-    );
-    saveTickets(updated);
-    setTickets(updated);
-    const found = updated.find(t => t.id === id);
-    if (found) setSelectedTicket(found);
-  }, [tickets]);
+  const completeTicket = useCallback(async (id: string, afterImageUrl: string) => {
+    try {
+      await resolveTicket({ ticket_id: id, user_id: user._id });
+      
+      const updated = tickets.map(t => 
+        t.id === id ? { ...t, state: 'COMPLETED' as const, afterImageUrl, completedAt: new Date().toISOString() } : t
+      );
+      setTickets(updated);
+      const found = updated.find(t => t.id === id);
+      if (found) setSelectedTicket(found);
+      
+      toast({
+        title: '🎉 Cleanup Complete!',
+        description: 'Amazing work! Thank you for helping clean up the community.',
+      });
+      
+      // Refresh leaderboard after completion
+      fetchLeaderboard(leaderboardPage);
+    } catch (error) {
+      console.error('Failed to complete ticket:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to mark ticket as complete',
+        variant: 'destructive',
+      });
+    }
+  }, [tickets, user._id, fetchLeaderboard, leaderboardPage]);
 
-  const createTicket = useCallback((newTicket: Ticket) => {
-    const updated = [newTicket, ...tickets];
-    saveTickets(updated);
-    setTickets(updated);
-  }, [tickets]);
+  const handleTicketCreated = useCallback((newTicket: Ticket) => {
+    setTickets(prev => [newTicket, ...prev]);
+    toast({
+      title: 'Ticket Created!',
+      description: 'Your litter report has been submitted.',
+    });
+  }, []);
 
   const stats = {
     totalOpen: tickets.filter(t => t.state === 'OPEN').length,
@@ -167,7 +226,7 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
     return (
       <>
         <div className="min-h-screen bg-background flex flex-col">
-          <Header userName={userName} onSignOut={onSignOut} />
+          <Header userName={userName} onSignOut={onSignOut} onRefresh={handleRefresh} isRefreshing={isRefreshing} />
 
           {/* Mobile View Toggle */}
           <div className="flex border-b border-border bg-card">
@@ -225,7 +284,7 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                     {/* Tickets Tab */}
                     {activeTab === 'tickets' && (
                       <div className="space-y-3">
-                        <CreateTicketDialog onCreateTicket={createTicket} />
+                        <CreateTicketDialog onTicketCreated={handleTicketCreated} />
                         
                         {/* Compact Filters for Mobile */}
                         <div className="space-y-2 p-2 bg-muted/50 rounded-lg border border-border">
@@ -351,7 +410,12 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                           <Trophy className="w-4 h-4 text-primary" />
                           <h2 className="font-semibold text-foreground text-sm">Leaderboard</h2>
                         </div>
-                        <Leaderboard leaderboard={leaderboard} />
+                        <Leaderboard 
+                          entries={leaderboard} 
+                          currentPage={leaderboardPage}
+                          totalPages={Math.ceil(leaderboardTotal / 10)}
+                          onPageChange={fetchLeaderboard}
+                        />
                       </div>
                     )}
                   </div>
@@ -390,7 +454,7 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
   return (
     <>
       <div className="min-h-screen bg-background flex flex-col">
-        <Header userName={userName} onSignOut={onSignOut} />
+        <Header userName={userName} onSignOut={onSignOut} onRefresh={handleRefresh} isRefreshing={isRefreshing} />
 
         <div className="flex-1 flex relative">
           {/* Left Panel */}
@@ -432,7 +496,7 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                   {activeTab === 'tickets' && (
                     <div className="space-y-4">
                       {/* Create Ticket Button */}
-                      <CreateTicketDialog onCreateTicket={createTicket} />
+                      <CreateTicketDialog onTicketCreated={handleTicketCreated} />
                       
                       {/* Filters */}
                       <div className="space-y-3 p-3 bg-muted/50 rounded-lg border border-border">
@@ -575,7 +639,12 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                         <Trophy className="w-5 h-5 text-primary" />
                         <h2 className="font-semibold text-foreground">Volunteer Leaderboard</h2>
                       </div>
-                      <Leaderboard leaderboard={leaderboard} />
+                      <Leaderboard 
+                        entries={leaderboard}
+                        currentPage={leaderboardPage}
+                        totalPages={Math.ceil(leaderboardTotal / 10)}
+                        onPageChange={fetchLeaderboard}
+                      />
                     </div>
                   )}
                 </div>

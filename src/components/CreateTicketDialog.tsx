@@ -22,18 +22,22 @@ import {
   Camera, 
   Upload,
   X,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Ticket, TicketPriority } from '@/data/dummyTickets';
+import { toast } from '@/hooks/use-toast';
+import type { Ticket, TicketPriority } from '@/types/api';
+import { createTicket, classifyImage } from '@/services/api';
 
 interface CreateTicketDialogProps {
-  onCreateTicket: (ticket: Ticket) => void;
+  onTicketCreated: (ticket: Ticket) => void;
 }
 
-export function CreateTicketDialog({ onCreateTicket }: CreateTicketDialogProps) {
+export function CreateTicketDialog({ onTicketCreated }: CreateTicketDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClassifying, setIsClassifying] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Form state
@@ -45,6 +49,8 @@ export function CreateTicketDialog({ onCreateTicket }: CreateTicketDialogProps) 
   const [time, setTime] = useState(format(new Date(), 'HH:mm'));
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [autoSeverity, setAutoSeverity] = useState<number | null>(null);
 
   const resetForm = () => {
     setTitle('');
@@ -55,23 +61,57 @@ export function CreateTicketDialog({ onCreateTicket }: CreateTicketDialogProps) 
     setTime(format(new Date(), 'HH:mm'));
     setImagePreview(null);
     setImageFile(null);
+    setImageBase64(null);
+    setAutoSeverity(null);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setImageFile(file);
+      
+      // Read as base64
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreview(reader.result as string);
+        const result = reader.result as string;
+        setImagePreview(result);
+        setImageBase64(result);
       };
       reader.readAsDataURL(file);
+
+      // Try to classify the image
+      setIsClassifying(true);
+      try {
+        const classification = await classifyImage(file);
+        if (classification.severity !== null) {
+          setAutoSeverity(classification.severity);
+          // Map 1-10 severity to priority
+          if (classification.severity >= 7) {
+            setPriority('HIGH');
+          } else if (classification.severity >= 4) {
+            setPriority('MEDIUM');
+          } else {
+            setPriority('LOW');
+          }
+          toast({
+            title: 'AI Classification',
+            description: `Detected severity: ${classification.severity}/10`,
+          });
+        }
+      } catch (error) {
+        console.error('Classification failed:', error);
+        // Non-critical, just continue without AI severity
+      } finally {
+        setIsClassifying(false);
+      }
     }
   };
 
   const removeImage = () => {
     setImagePreview(null);
     setImageFile(null);
+    setImageBase64(null);
+    setAutoSeverity(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -83,41 +123,67 @@ export function CreateTicketDialog({ onCreateTicket }: CreateTicketDialogProps) 
     if (!title.trim() || !location.trim()) return;
     
     setIsSubmitting(true);
-    
-    // Simulate a brief delay
-    await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Generate random coordinates near NYC for demo purposes
-    // In production, you'd geocode the location string
-    const baseLat = 40.7128 + (Math.random() - 0.5) * 0.1;
-    const baseLng = -74.0060 + (Math.random() - 0.5) * 0.1;
+    try {
+      // Generate random coordinates near NYC for demo
+      // In production, you'd geocode the location string
+      const baseLat = 40.7128 + (Math.random() - 0.5) * 0.1;
+      const baseLng = -74.0060 + (Math.random() - 0.5) * 0.1;
 
-    // Combine date and time
-    const dateTime = date ? new Date(date) : new Date();
-    const [hours, minutes] = time.split(':').map(Number);
-    dateTime.setHours(hours, minutes, 0, 0);
+      // Map priority to severity (1-10)
+      const severityMap: Record<TicketPriority, number> = {
+        'LOW': autoSeverity || 3,
+        'MEDIUM': autoSeverity || 5,
+        'HIGH': autoSeverity || 8,
+      };
 
-    const newTicket: Ticket = {
-      id: `ticket-${Date.now()}`,
-      title: title.trim(),
-      description: description.trim() || 'User reported litter area requiring cleanup.',
-      priority,
-      lat: baseLat,
-      lng: baseLng,
-      createdAt: dateTime.toISOString(),
-      state: 'OPEN',
-      cameraId: 'user-report',
-      cameraName: location.trim(),
-      severityScore: priority === 'HIGH' ? 80 : priority === 'MEDIUM' ? 50 : 30,
-      beforeImageUrl: imagePreview || '/dummy_images/litter-1-before.jpg',
-      numDetections: Math.floor(Math.random() * 20) + 5,
-      totalAreaRatio: Math.random() * 0.15 + 0.05,
-    };
+      const response = await createTicket({
+        image_base64: imageBase64,
+        location: {
+          lat: baseLat,
+          lon: baseLng,
+        },
+        severity: severityMap[priority],
+        description: `${title.trim()}. ${description.trim()}`.trim(),
+        claimed: false,
+      });
 
-    onCreateTicket(newTicket);
-    setIsSubmitting(false);
-    setOpen(false);
-    resetForm();
+      // Combine date and time
+      const dateTime = date ? new Date(date) : new Date();
+      const [hours, minutes] = time.split(':').map(Number);
+      dateTime.setHours(hours, minutes, 0, 0);
+
+      // Create frontend ticket object
+      const newTicket: Ticket = {
+        id: response.ticket_id,
+        title: title.trim(),
+        description: description.trim() || 'User reported litter area requiring cleanup.',
+        priority,
+        lat: baseLat,
+        lng: baseLng,
+        createdAt: dateTime.toISOString(),
+        state: 'OPEN',
+        cameraId: 'user-report',
+        cameraName: location.trim(),
+        severityScore: severityMap[priority] * 10,
+        beforeImageUrl: response.image_url || imagePreview || '/dummy_images/litter-1-before.jpg',
+        numDetections: Math.floor(Math.random() * 20) + 5,
+        totalAreaRatio: Math.random() * 0.15 + 0.05,
+      };
+
+      onTicketCreated(newTicket);
+      setOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error('Failed to create ticket:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create ticket',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -154,6 +220,20 @@ export function CreateTicketDialog({ onCreateTicket }: CreateTicketDialogProps) 
                   alt="Preview" 
                   className="w-full h-48 object-cover"
                 />
+                {isClassifying && (
+                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                    <div className="flex items-center gap-2 text-primary">
+                      <Sparkles className="w-5 h-5 animate-pulse" />
+                      <span className="text-sm font-medium">Analyzing...</span>
+                    </div>
+                  </div>
+                )}
+                {autoSeverity !== null && !isClassifying && (
+                  <div className="absolute top-2 left-2 px-2 py-1 bg-primary text-primary-foreground rounded text-xs font-medium flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    AI Severity: {autoSeverity}/10
+                  </div>
+                )}
                 <Button
                   type="button"
                   variant="destructive"
@@ -228,7 +308,12 @@ export function CreateTicketDialog({ onCreateTicket }: CreateTicketDialogProps) 
 
           {/* Severity */}
           <div className="space-y-2">
-            <Label>Severity</Label>
+            <Label className="flex items-center gap-2">
+              Severity
+              {autoSeverity !== null && (
+                <span className="text-xs text-primary">(AI suggested)</span>
+              )}
+            </Label>
             <Select value={priority} onValueChange={(v) => setPriority(v as TicketPriority)}>
               <SelectTrigger>
                 <SelectValue />
@@ -299,7 +384,7 @@ export function CreateTicketDialog({ onCreateTicket }: CreateTicketDialogProps) 
             <Button
               type="submit"
               className="flex-1 gap-2"
-              disabled={isSubmitting || !title.trim() || !location.trim()}
+              disabled={isSubmitting || isClassifying || !title.trim() || !location.trim()}
             >
               {isSubmitting ? (
                 <>
