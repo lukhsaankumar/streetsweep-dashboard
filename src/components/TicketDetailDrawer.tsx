@@ -4,7 +4,6 @@ import { getUserById } from '@/services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
-  MapPin, 
   Camera, 
   Clock, 
   AlertTriangle, 
@@ -14,7 +13,6 @@ import {
   Users,
   Plus,
   Trash2,
-  ExternalLink,
   AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { CompletionDialog } from '@/components/CompletionDialog';
+import googleMapsLogo from '@/assets/google-maps-logo.png';
 
 const priorityConfig: Record<TicketPriority, { label: string; className: string }> = {
   HIGH: { label: 'High Severity', className: 'priority-high' },
@@ -245,18 +244,17 @@ export function TicketDetailDrawer({ userName, userId, ticket, onClose, onClaim,
                 <p className="font-medium text-foreground text-sm">{formatDate(ticket.createdAt)}</p>
               </div>
               <div className="p-3 bg-muted rounded-lg">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                  <MapPin className="w-4 h-4" />
-                  Coordinates
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
+                  Directions
                 </div>
                 <a
-                  href={`https://www.google.com/maps?q=${ticket.lat},${ticket.lng}`}
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${ticket.lat},${ticket.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-mono text-primary text-xs hover:underline flex items-center gap-1"
+                  className="flex items-center gap-2 text-primary text-sm hover:underline"
                 >
-                  {ticket.lat.toFixed(4)}, {ticket.lng.toFixed(4)}
-                  <ExternalLink className="w-3 h-3" />
+                  <img src={googleMapsLogo} alt="Google Maps" className="w-4 h-4" />
+                  Open in Google Maps
                 </a>
               </div>
             </div>
