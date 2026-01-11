@@ -4,6 +4,7 @@ import { TicketCard } from '@/components/TicketCard';
 import { MapView } from '@/components/MapView';
 import { TicketDetailDrawer } from '@/components/TicketDetailDrawer';
 import { Leaderboard } from '@/components/Leaderboard';
+import { CreateTicketDialog } from '@/components/CreateTicketDialog';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -102,6 +103,12 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
     if (found) setSelectedTicket(found);
   }, [tickets]);
 
+  const createTicket = useCallback((newTicket: Ticket) => {
+    const updated = [newTicket, ...tickets];
+    saveTickets(updated);
+    setTickets(updated);
+  }, [tickets]);
+
   const stats = {
     totalOpen: tickets.filter(t => t.state === 'OPEN').length,
     totalClaimed: tickets.filter(t => t.state === 'CLAIMED').length,
@@ -158,6 +165,9 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                   {/* Tickets Tab */}
                   {activeTab === 'tickets' && (
                     <div className="space-y-4">
+                      {/* Create Ticket Button */}
+                      <CreateTicketDialog onCreateTicket={createTicket} />
+                      
                       {/* Stats */}
                       <div className="grid grid-cols-3 gap-2">
                         <div className="p-3 bg-muted rounded-lg text-center">
