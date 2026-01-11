@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Filter,
-  RefreshCw
+  RefreshCw,
+  ArrowUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,6 +32,7 @@ import { getTickets, resolveTicket, getLeaderboard, getInsight, claimTicket as c
 
 type Tab = 'tickets' | 'insights' | 'leaderboard';
 type MobileView = 'list' | 'map';
+type PrioritySort = 'high-to-low' | 'low-to-high';
 
 interface DashboardProps {
   user: User;
@@ -67,6 +69,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   // Filter state - default: only OPEN selected, all priorities
   const [selectedStates, setSelectedStates] = useState<Set<TicketState>>(new Set(['OPEN']));
   const [selectedPriorities, setSelectedPriorities] = useState<Set<TicketPriority>>(new Set(['LOW', 'MEDIUM', 'HIGH']));
+  const [prioritySort, setPrioritySort] = useState<PrioritySort>('high-to-low');
 
   const userName = user.name;
 
@@ -99,13 +102,26 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
     });
   };
 
+  const priorityOrder: Record<TicketPriority, number> = {
+    HIGH: 3,
+    MEDIUM: 2,
+    LOW: 1,
+  };
+
   const filteredTickets = useMemo(() => {
-    return tickets.filter(ticket => {
+    const filtered = tickets.filter(ticket => {
       const stateMatch = selectedStates.size === 0 || selectedStates.has(ticket.state);
       const priorityMatch = selectedPriorities.size === 0 || selectedPriorities.has(ticket.priority);
       return stateMatch && priorityMatch;
     });
-  }, [tickets, selectedStates, selectedPriorities]);
+    
+    // Sort by priority
+    return filtered.sort((a, b) => {
+      const aOrder = priorityOrder[a.priority];
+      const bOrder = priorityOrder[b.priority];
+      return prioritySort === 'high-to-low' ? bOrder - aOrder : aOrder - bOrder;
+    });
+  }, [tickets, selectedStates, selectedPriorities, prioritySort]);
 
   const fetchTickets = useCallback(async () => {
     try {
@@ -440,6 +456,17 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                               </button>
                             ))}
                           </div>
+                          
+                          {/* Sort Option */}
+                          <div className="pt-1.5 border-t border-border mt-1.5">
+                            <button
+                              onClick={() => setPrioritySort(prev => prev === 'high-to-low' ? 'low-to-high' : 'high-to-low')}
+                              className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-background border border-border text-muted-foreground hover:border-primary/50 transition-colors"
+                            >
+                              <ArrowUpDown className="w-3 h-3" />
+                              {prioritySort === 'high-to-low' ? 'High → Low' : 'Low → High'}
+                            </button>
+                          </div>
                         </div>
                         
                         {/* Stats Row */}
@@ -692,12 +719,24 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                                     : "bg-background border-border text-muted-foreground hover:border-primary/50"
                                 )}
                               >
-                                {priority === 'HIGH' ? 'High' : priority === 'MEDIUM' ? 'Medium' : 'Low'}
-                              </button>
-                            ))}
-                          </div>
+                              {priority === 'HIGH' ? 'High' : priority === 'MEDIUM' ? 'Medium' : 'Low'}
+                            </button>
+                          ))}
                         </div>
                       </div>
+
+                      {/* Sort Option */}
+                      <div className="space-y-1.5">
+                        <p className="text-xs text-muted-foreground">Sort by Priority</p>
+                        <button
+                          onClick={() => setPrioritySort(prev => prev === 'high-to-low' ? 'low-to-high' : 'high-to-low')}
+                          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full bg-background border border-border text-muted-foreground hover:border-primary/50 transition-colors"
+                        >
+                          <ArrowUpDown className="w-3.5 h-3.5" />
+                          {prioritySort === 'high-to-low' ? 'High → Low' : 'Low → High'}
+                        </button>
+                      </div>
+                    </div>
                       
                       {/* Stats */}
                       <div className="grid grid-cols-3 gap-2">
