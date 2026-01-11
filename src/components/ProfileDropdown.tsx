@@ -1,4 +1,4 @@
-import { User, LogOut, Trophy, CheckCircle2, Recycle } from 'lucide-react';
+import { User, LogOut, Trophy, CheckCircle2, Recycle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -64,6 +64,31 @@ export function ProfileDropdown({ user, tickets, onSignOut }: ProfileDropdownPro
               <span className="text-sm text-foreground">Points</span>
             </div>
             <span className="text-sm font-bold text-primary">{points}</span>
+          </div>
+          
+          {/* Points Info */}
+          <div className="px-2 py-2 rounded-lg bg-muted/50 border border-border">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Info className="w-3 h-3 text-muted-foreground" />
+              <span className="text-[10px] font-medium text-muted-foreground uppercase">How Points Work</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1 text-center text-[10px]">
+              <div className="p-1 rounded bg-primary/10">
+                <div className="font-bold text-primary">+2</div>
+                <div className="text-muted-foreground">Low</div>
+              </div>
+              <div className="p-1 rounded bg-warning/10">
+                <div className="font-bold text-warning">+4</div>
+                <div className="text-muted-foreground">Med</div>
+              </div>
+              <div className="p-1 rounded bg-destructive/10">
+                <div className="font-bold text-destructive">+6</div>
+                <div className="text-muted-foreground">High</div>
+              </div>
+            </div>
+            <p className="text-[9px] text-muted-foreground mt-1.5 text-center">
+              Half points if cleanup unsuccessful
+            </p>
           </div>
           
           <div className="grid grid-cols-2 gap-2">
