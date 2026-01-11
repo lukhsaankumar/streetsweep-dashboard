@@ -492,7 +492,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
             ) : (
               <div className="h-[calc(100vh-8rem)] p-2">
                 <MapView 
-                  tickets={tickets}
+                  tickets={filteredTickets}
                   selectedTicket={selectedTicket}
                   onSelectTicket={setSelectedTicket}
                   showHeatmap={showHeatmap} 
@@ -772,7 +772,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
           {/* Map - add isolation to prevent z-index conflicts */}
           <main className="flex-1 h-[calc(100vh-4rem)] p-4 isolate" style={{ zIndex: 1 }}>
             <MapView 
-              tickets={tickets}
+              tickets={filteredTickets}
               selectedTicket={selectedTicket}
               onSelectTicket={setSelectedTicket}
               showHeatmap={showHeatmap} 
