@@ -1,4 +1,4 @@
-import { Ticket, TicketPriority } from '@/data/dummyTickets';
+import type { Ticket, TicketPriority } from '@/types/api';
 import { motion } from 'framer-motion';
 import { Clock, MapPin, Camera, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';

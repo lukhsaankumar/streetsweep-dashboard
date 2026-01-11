@@ -23,12 +23,14 @@ import {
   Upload,
   X,
   Loader2,
-  Sparkles
+  Sparkles,
+  Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import type { Ticket, TicketPriority } from '@/types/api';
 import { createTicket, classifyImage } from '@/services/api';
+import { LocationPickerMap } from '@/components/LocationPickerMap';
 
 interface CreateTicketDialogProps {
   onTicketCreated: (ticket: Ticket) => void;
@@ -43,7 +45,6 @@ export function CreateTicketDialog({ onTicketCreated }: CreateTicketDialogProps)
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
   const [priority, setPriority] = useState<TicketPriority>('MEDIUM');
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [time, setTime] = useState(format(new Date(), 'HH:mm'));
@@ -51,11 +52,13 @@ export function CreateTicketDialog({ onTicketCreated }: CreateTicketDialogProps)
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [autoSeverity, setAutoSeverity] = useState<number | null>(null);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationName, setLocationName] = useState('');
 
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setLocation('');
     setPriority('MEDIUM');
     setDate(new Date());
     setTime(format(new Date(), 'HH:mm'));
@@ -63,6 +66,9 @@ export function CreateTicketDialog({ onTicketCreated }: CreateTicketDialogProps)
     setImageFile(null);
     setImageBase64(null);
     setAutoSeverity(null);
+    setShowMapPicker(false);
+    setSelectedLocation(null);
+    setLocationName('');
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,19 +123,25 @@ export function CreateTicketDialog({ onTicketCreated }: CreateTicketDialogProps)
     }
   };
 
+  const handleLocationSelect = (location: { lat: number; lng: number }) => {
+    setSelectedLocation(location);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title.trim() || !location.trim()) return;
+    if (!title.trim() || !selectedLocation) {
+      toast({
+        title: 'Missing information',
+        description: 'Please provide a title and select a location on the map.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     setIsSubmitting(true);
 
     try {
-      // Generate random coordinates near NYC for demo
-      // In production, you'd geocode the location string
-      const baseLat = 40.7128 + (Math.random() - 0.5) * 0.1;
-      const baseLng = -74.0060 + (Math.random() - 0.5) * 0.1;
-
       // Map priority to severity (1-10)
       const severityMap: Record<TicketPriority, number> = {
         'LOW': autoSeverity || 3,
@@ -141,8 +153,8 @@ export function CreateTicketDialog({ onTicketCreated }: CreateTicketDialogProps)
         image_url: imagePreview || '',
         image_base64: imageBase64,
         location: {
-          lat: baseLat,
-          lon: baseLng,
+          lat: selectedLocation.lat,
+          lon: selectedLocation.lng,
         },
         severity: severityMap[priority],
         description: `${title.trim()}. ${description.trim()}`.trim(),
@@ -160,12 +172,12 @@ export function CreateTicketDialog({ onTicketCreated }: CreateTicketDialogProps)
         title: title.trim(),
         description: description.trim() || 'User reported litter area requiring cleanup.',
         priority,
-        lat: baseLat,
-        lng: baseLng,
+        lat: selectedLocation.lat,
+        lng: selectedLocation.lng,
         createdAt: dateTime.toISOString(),
         state: 'OPEN',
         cameraId: 'user-report',
-        cameraName: location.trim(),
+        cameraName: locationName.trim() || `${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`,
         severityScore: severityMap[priority] * 10,
         beforeImageUrl: response.image_url || imagePreview || '/dummy_images/litter-1-before.jpg',
         numDetections: Math.floor(Math.random() * 20) + 5,
@@ -299,12 +311,46 @@ export function CreateTicketDialog({ onTicketCreated }: CreateTicketDialogProps)
               <MapPin className="w-4 h-4" />
               Location *
             </Label>
+            
+            {/* Location Name Input */}
             <Input
-              placeholder="e.g., Queen St W & Spadina Ave"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              required
+              placeholder="e.g., Queen St W & Spadina Ave (optional name)"
+              value={locationName}
+              onChange={(e) => setLocationName(e.target.value)}
             />
+            
+            {/* Map Toggle Button */}
+            <Button
+              type="button"
+              variant={showMapPicker ? "secondary" : "outline"}
+              onClick={() => setShowMapPicker(!showMapPicker)}
+              className="w-full gap-2"
+            >
+              <Map className="w-4 h-4" />
+              {showMapPicker ? 'Hide Map' : 'Select Location on Map'}
+              {selectedLocation && (
+                <span className="ml-auto text-xs text-primary">
+                  ✓ Selected
+                </span>
+              )}
+            </Button>
+
+            {/* Map Picker */}
+            {showMapPicker && (
+              <LocationPickerMap
+                value={selectedLocation}
+                onChange={handleLocationSelect}
+                className="h-[250px]"
+              />
+            )}
+
+            {/* Show selected coordinates */}
+            {selectedLocation && !showMapPicker && (
+              <div className="text-xs text-muted-foreground flex items-center gap-1 bg-muted px-2 py-1 rounded">
+                <MapPin className="w-3 h-3" />
+                {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+              </div>
+            )}
           </div>
 
           {/* Severity */}
@@ -385,7 +431,7 @@ export function CreateTicketDialog({ onTicketCreated }: CreateTicketDialogProps)
             <Button
               type="submit"
               className="flex-1 gap-2"
-              disabled={isSubmitting || isClassifying || !title.trim() || !location.trim()}
+              disabled={isSubmitting || isClassifying || !title.trim() || !selectedLocation}
             >
               {isSubmitting ? (
                 <>
