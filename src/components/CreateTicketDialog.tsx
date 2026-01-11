@@ -226,9 +226,9 @@ export function CreateTicketDialog({ onCreateTicket }: CreateTicketDialogProps) 
             />
           </div>
 
-          {/* Priority */}
+          {/* Severity */}
           <div className="space-y-2">
-            <Label>Priority</Label>
+            <Label>Severity</Label>
             <Select value={priority} onValueChange={(v) => setPriority(v as TicketPriority)}>
               <SelectTrigger>
                 <SelectValue />
