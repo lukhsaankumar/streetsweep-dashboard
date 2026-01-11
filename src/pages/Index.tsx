@@ -35,8 +35,12 @@ const Index = () => {
     }
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     localStorage.removeItem(AUTH_KEY);
+    await fetch("/api/logout", {
+      method: "POST",
+      credentials: "include",
+    });
     setUser(null);
   };
 
