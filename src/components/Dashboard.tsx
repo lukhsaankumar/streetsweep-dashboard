@@ -285,7 +285,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
     return (
       <>
         <div className="min-h-screen bg-background flex flex-col">
-          <Header userName={userName} onSignOut={onSignOut} onRefresh={handleRefresh} isRefreshing={isRefreshing} />
+          <Header user={user} tickets={tickets} onSignOut={onSignOut} onRefresh={handleRefresh} isRefreshing={isRefreshing} />
 
           {/* Mobile View Toggle */}
           <div className="flex border-b border-border bg-card">
@@ -547,7 +547,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   return (
     <>
       <div className="min-h-screen bg-background flex flex-col">
-        <Header userName={userName} onSignOut={onSignOut} onRefresh={handleRefresh} isRefreshing={isRefreshing} />
+        <Header user={user} tickets={tickets} onSignOut={onSignOut} onRefresh={handleRefresh} isRefreshing={isRefreshing} />
 
         <div className="flex-1 flex relative">
           {/* Left Panel */}
