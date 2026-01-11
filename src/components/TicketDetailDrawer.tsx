@@ -13,7 +13,8 @@ import {
   ChevronRight,
   Users,
   Plus,
-  Trash2
+  Trash2,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -220,9 +221,15 @@ export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUncla
                 <MapPin className="w-4 h-4" />
                 Location
               </div>
-              <p className="font-mono text-foreground text-xs">
+              <a
+                href={`https://www.google.com/maps?q=${ticket.lat},${ticket.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-primary text-xs hover:underline flex items-center gap-1"
+              >
                 {ticket.lat.toFixed(4)}, {ticket.lng.toFixed(4)}
-              </p>
+                <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
           </div>
 
