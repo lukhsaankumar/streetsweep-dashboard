@@ -313,7 +313,6 @@ export async function compareImages(
   
   formData.append('file1', beforeFile);
   formData.append('file2', afterImageFile);
-  formData.append('ticket_id', ticketId);
   
   const res = await fetch(`${API_BASE_URL}/compare?ticket_id=${encodeURIComponent(ticketId)}`, {
     method: 'POST',
