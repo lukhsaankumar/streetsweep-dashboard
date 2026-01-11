@@ -21,11 +21,6 @@ const features = [
   },
 ];
 
-const stats = [
-  { value: '500+', label: 'Cleanups Completed' },
-  { value: '50+', label: 'Active Volunteers' },
-  { value: '100kg', label: 'Litter Collected' },
-];
 
 export default function Landing() {
   return (
@@ -126,26 +121,6 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* Stats Section */}
-      <section className="relative z-10 px-4 md:px-8 py-12 md:py-16 bg-card/50 border-y border-border">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-3 gap-4 md:gap-8">
-            {stats.map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                viewport={{ once: true }}
-                className="text-center"
-              >
-                <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary mb-1">{stat.value}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">{stat.label}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Features Section */}
       <section className="relative z-10 px-4 md:px-8 py-16 md:py-24 max-w-7xl mx-auto">
