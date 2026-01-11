@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { TicketCard } from '@/components/TicketCard';
 import { MapView } from '@/components/MapView';
@@ -16,12 +16,13 @@ import {
   Loader2,
   Recycle,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Filter
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Ticket, VolunteerStats, Squad, dummyLeaderboard, dummyTickets } from '@/data/dummyTickets';
+import { Ticket, VolunteerStats, Squad, TicketPriority, TicketState, dummyLeaderboard, dummyTickets } from '@/data/dummyTickets';
 
 type Tab = 'tickets' | 'insights' | 'leaderboard';
 
@@ -51,6 +52,42 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('tickets');
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [leaderboard] = useState<VolunteerStats[]>(dummyLeaderboard);
+  
+  // Filter state - default: only OPEN selected, all priorities
+  const [selectedStates, setSelectedStates] = useState<Set<TicketState>>(new Set(['OPEN']));
+  const [selectedPriorities, setSelectedPriorities] = useState<Set<TicketPriority>>(new Set(['LOW', 'MEDIUM', 'HIGH']));
+
+  const toggleState = (state: TicketState) => {
+    setSelectedStates(prev => {
+      const next = new Set(prev);
+      if (next.has(state)) {
+        next.delete(state);
+      } else {
+        next.add(state);
+      }
+      return next;
+    });
+  };
+
+  const togglePriority = (priority: TicketPriority) => {
+    setSelectedPriorities(prev => {
+      const next = new Set(prev);
+      if (next.has(priority)) {
+        next.delete(priority);
+      } else {
+        next.add(priority);
+      }
+      return next;
+    });
+  };
+
+  const filteredTickets = useMemo(() => {
+    return tickets.filter(ticket => {
+      const stateMatch = selectedStates.size === 0 || selectedStates.has(ticket.state);
+      const priorityMatch = selectedPriorities.size === 0 || selectedPriorities.has(ticket.priority);
+      return stateMatch && priorityMatch;
+    });
+  }, [tickets, selectedStates, selectedPriorities]);
 
   useEffect(() => {
     const loaded = getStoredTickets();
@@ -168,6 +205,64 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                       {/* Create Ticket Button */}
                       <CreateTicketDialog onCreateTicket={createTicket} />
                       
+                      {/* Filters */}
+                      <div className="space-y-3 p-3 bg-muted/50 rounded-lg border border-border">
+                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <Filter className="w-4 h-4" />
+                          Filters
+                        </div>
+                        
+                        {/* State Filters */}
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground">Status</p>
+                          <div className="flex gap-2">
+                            {(['OPEN', 'CLAIMED', 'COMPLETED'] as TicketState[]).map(state => (
+                              <button
+                                key={state}
+                                onClick={() => toggleState(state)}
+                                className={cn(
+                                  "px-3 py-1.5 text-xs font-medium rounded-full border transition-colors",
+                                  selectedStates.has(state)
+                                    ? state === 'OPEN' 
+                                      ? "bg-orange-500/20 border-orange-500 text-orange-500"
+                                      : state === 'CLAIMED'
+                                      ? "bg-blue-500/20 border-blue-500 text-blue-500"
+                                      : "bg-green-500/20 border-green-500 text-green-500"
+                                    : "bg-background border-border text-muted-foreground hover:border-primary/50"
+                                )}
+                              >
+                                {state === 'OPEN' ? 'Open' : state === 'CLAIMED' ? 'Claimed' : 'Completed'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Priority Filters */}
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground">Priority</p>
+                          <div className="flex gap-2">
+                            {(['HIGH', 'MEDIUM', 'LOW'] as TicketPriority[]).map(priority => (
+                              <button
+                                key={priority}
+                                onClick={() => togglePriority(priority)}
+                                className={cn(
+                                  "px-3 py-1.5 text-xs font-medium rounded-full border transition-colors",
+                                  selectedPriorities.has(priority)
+                                    ? priority === 'HIGH'
+                                      ? "bg-destructive/20 border-destructive text-destructive"
+                                      : priority === 'MEDIUM'
+                                      ? "bg-warning/20 border-warning text-warning"
+                                      : "bg-primary/20 border-primary text-primary"
+                                    : "bg-background border-border text-muted-foreground hover:border-primary/50"
+                                )}
+                              >
+                                {priority === 'HIGH' ? 'High' : priority === 'MEDIUM' ? 'Medium' : 'Low'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      
                       {/* Stats */}
                       <div className="grid grid-cols-3 gap-2">
                         <div className="p-3 bg-muted rounded-lg text-center">
@@ -192,17 +287,17 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
                           <Loader2 className="w-8 h-8 animate-spin mb-2" />
                           <p>Loading tickets...</p>
                         </div>
-                      ) : tickets.length === 0 ? (
+                      ) : filteredTickets.length === 0 ? (
                         <div className="py-12 text-center text-muted-foreground">
                           <Map className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                          <p>No tickets found</p>
+                          <p>No tickets match filters</p>
                         </div>
                       ) : (
                         <div className="space-y-3">
                           <p className="text-sm text-muted-foreground">
-                            {tickets.length} ticket{tickets.length !== 1 ? 's' : ''} found
+                            {filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''} found
                           </p>
-                          {tickets.map((ticket, index) => (
+                          {filteredTickets.map((ticket, index) => (
                             <motion.div
                               key={ticket.id}
                               initial={{ opacity: 0, y: 20 }}
