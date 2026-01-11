@@ -85,11 +85,19 @@ export async function login(data: LoginRequest): Promise<{ token: string; user: 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
+    credentials: 'include', // Include cookies for CORS
   });
   
   if (!res.ok) {
-    const json = await res.json();
-    throw new Error(json.detail || 'Invalid credentials');
+    const text = await res.text();
+    let errorMessage = 'Invalid credentials';
+    try {
+      const json = JSON.parse(text);
+      errorMessage = json.detail || errorMessage;
+    } catch {
+      errorMessage = text || errorMessage;
+    }
+    throw new Error(errorMessage);
   }
   
   const loginRes: LoginResponse = await res.json();
