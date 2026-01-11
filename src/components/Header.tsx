@@ -1,56 +1,48 @@
-import { LogOut, Leaf, RefreshCw } from 'lucide-react';
+import { Leaf, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ProfileDropdown } from '@/components/ProfileDropdown';
 import { cn } from '@/lib/utils';
+import type { User, Ticket } from '@/types/api';
 
 interface HeaderProps {
-  userName: string;
+  user: User;
+  tickets: Ticket[];
   onSignOut: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
 }
 
-export function Header({ userName, onSignOut, onRefresh, isRefreshing }: HeaderProps) {
+export function Header({ user, tickets, onSignOut, onRefresh, isRefreshing }: HeaderProps) {
   return (
-    <header className="h-16 border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40">
-      <div className="h-full px-4 md:px-6 flex items-center justify-between max-w-[1800px] mx-auto">
+    <header className="h-14 sm:h-16 border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40">
+      <div className="h-full px-3 sm:px-4 md:px-6 flex items-center justify-between max-w-[1800px] mx-auto">
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center glow-primary">
-            <Leaf className="w-6 h-6 text-primary" />
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/20 flex items-center justify-center glow-primary">
+            <Leaf className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
           </div>
           <div>
-            <h1 className="font-bold text-lg text-foreground glow-text">StreetSweep AI</h1>
-            <p className="text-xs text-muted-foreground hidden sm:block">Volunteer Dashboard</p>
+            <h1 className="font-bold text-base sm:text-lg text-foreground glow-text">StreetSweep AI</h1>
+            <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Volunteer Dashboard</p>
           </div>
         </div>
 
-        {/* User */}
-        <div className="flex items-center gap-3">
+        {/* Actions */}
+        <div className="flex items-center gap-1 sm:gap-3">
           {onRefresh && (
             <Button
               variant="ghost"
               size="icon"
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground h-9 w-9 sm:h-10 sm:w-10"
               aria-label="Refresh data"
             >
               <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
             </Button>
           )}
-          <div className="hidden sm:block text-right">
-            <p className="text-sm font-medium text-foreground capitalize">{userName}</p>
-            <p className="text-xs text-muted-foreground">Volunteer</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onSignOut}
-            className="text-muted-foreground hover:text-foreground"
-            aria-label="Sign out"
-          >
-            <LogOut className="w-4 h-4" />
-          </Button>
+          
+          <ProfileDropdown user={user} tickets={tickets} onSignOut={onSignOut} />
         </div>
       </div>
     </header>
