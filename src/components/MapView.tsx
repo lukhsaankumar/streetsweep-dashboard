@@ -99,9 +99,9 @@ export function MapView({ tickets, selectedTicket, onSelectTicket, showHeatmap, 
   // Generate a key based on ticket IDs to force re-render when filters change
   const ticketsKey = useMemo(() => tickets.map(t => t.id).sort().join(','), [tickets]);
   
-  // Center on NYC by default - only calculate on initial render or when tickets change significantly
+  // Center on Toronto by default - only calculate on initial render or when tickets change significantly
   const center: [number, number] = useMemo(() => {
-    if (tickets.length === 0) return [40.7128, -74.0060];
+    if (tickets.length === 0) return [43.6548, -79.3883];
     
     const avgLat = tickets.reduce((sum, t) => sum + t.lat, 0) / tickets.length;
     const avgLng = tickets.reduce((sum, t) => sum + t.lng, 0) / tickets.length;

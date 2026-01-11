@@ -16,12 +16,6 @@ interface CompletionDialogProps {
   ticketTitle: string;
 }
 
-const sampleAfterImages = [
-  '/dummy_images/litter-1-after.jpg',
-  '/dummy_images/litter-2-after.jpg',
-  '/dummy_images/litter-3-after.jpg',
-  '/dummy_images/litter-4-after.jpg',
-];
 
 export function CompletionDialog({ open, onOpenChange, onComplete, ticketTitle }: CompletionDialogProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -134,33 +128,6 @@ export function CompletionDialog({ open, onOpenChange, onComplete, ticketTitle }
             />
           </div>
 
-          {/* Sample Images Section */}
-          {!uploadedPreview && (
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-muted-foreground">Or select a sample photo</p>
-              <div className="grid grid-cols-4 gap-2">
-                {sampleAfterImages.map((img, i) => (
-                  <button
-                    key={img}
-                    onClick={() => setSelectedImage(img)}
-                    className={cn(
-                      "relative rounded-lg overflow-hidden border-2 transition-colors",
-                      selectedImage === img 
-                        ? "border-primary ring-2 ring-primary/30" 
-                        : "border-transparent hover:border-primary/50"
-                    )}
-                  >
-                    <img src={img} alt={`Sample ${i + 1}`} className="w-full h-16 object-cover" />
-                    {selectedImage === img && (
-                      <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                        <Check className="w-5 h-5 text-primary" />
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">
