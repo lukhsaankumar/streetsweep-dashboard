@@ -15,7 +15,7 @@ import type {
   TicketState,
 } from '@/types/api';
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || '';
+const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '');
 
 // Token management
 const TOKEN_KEY = 'streetsweep_token';
