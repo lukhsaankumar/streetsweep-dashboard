@@ -4,6 +4,7 @@ import { TicketCard } from '@/components/TicketCard';
 import { MapView } from '@/components/MapView';
 import { TicketDetailDrawer } from '@/components/TicketDetailDrawer';
 import { Leaderboard } from '@/components/Leaderboard';
+import { RewardsPopup } from '@/components/RewardsPopup';
 import { CreateTicketDialog } from '@/components/CreateTicketDialog';
 import { motion } from 'framer-motion';
 import { 
@@ -502,6 +503,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                           <Trophy className="w-4 h-4 text-primary" />
                           <h2 className="font-semibold text-foreground text-sm">Leaderboard</h2>
                         </div>
+                        <RewardsPopup topEntries={leaderboard} />
                         <Leaderboard 
                           entries={leaderboard} 
                           currentPage={leaderboardPage}
@@ -765,6 +767,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                         <Trophy className="w-5 h-5 text-primary" />
                         <h2 className="font-semibold text-foreground">Volunteer Leaderboard</h2>
                       </div>
+                      <RewardsPopup topEntries={leaderboard} />
                       <Leaderboard 
                         entries={leaderboard}
                         currentPage={leaderboardPage}
