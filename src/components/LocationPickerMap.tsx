@@ -104,8 +104,8 @@ function FlyToLocation({ location }: { location: { lat: number; lng: number } | 
 }
 
 export function LocationPickerMap({ value, onChange, className }: LocationPickerMapProps) {
-  // Default to NYC
-  const defaultCenter: [number, number] = [40.7128, -74.0060];
+  // Default to Toronto
+  const defaultCenter: [number, number] = [43.6548, -79.3883];
   const center: [number, number] = value ? [value.lat, value.lng] : defaultCenter;
 
   const handleLocationSelect = useCallback((lat: number, lng: number) => {
