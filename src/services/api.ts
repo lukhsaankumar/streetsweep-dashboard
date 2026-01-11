@@ -178,11 +178,9 @@ function transformTicket(apiTicket: ApiTicket): Ticket {
   if (apiTicket.resolved) state = 'COMPLETED';
   else if (apiTicket.claimed) state = 'CLAIMED';
   
-  // Generate a readable title from description
+  // Use full description as title - no trimming
   const description = apiTicket.description || 'Litter Report';
-  const title = description.length > 50 
-    ? description.substring(0, 47) + '...'
-    : description;
+  const title = description;
   
   return {
     id: apiTicket._id,

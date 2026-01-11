@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import type { Ticket, TicketPriority, TicketState, Squad, User, LeaderboardEntry } from '@/types/api';
-import { getTickets, resolveTicket, getLeaderboard, getInsight, claimTicket as claimTicketApi, compareImages } from '@/services/api';
+import { getTickets, resolveTicket, getLeaderboard, getInsight, claimTicket as claimTicketApi, compareImages, getAllUsers } from '@/services/api';
 
 type Tab = 'tickets' | 'insights' | 'leaderboard';
 type MobileView = 'list' | 'map';
@@ -42,10 +42,10 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const selectedTicketRef = useRef<Ticket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showHeatmap, setShowHeatmap] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('tickets');
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [allUsers, setAllUsers] = useState<LeaderboardEntry[]>([]);
   const [leaderboardPage, setLeaderboardPage] = useState(1);
   const [leaderboardTotal, setLeaderboardTotal] = useState(0);
   const [mobileView, setMobileView] = useState<MobileView>('list');
@@ -127,6 +127,23 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
     }
   }, []);
 
+  const fetchAllUsers = useCallback(async () => {
+    try {
+      const users = await getAllUsers();
+      // Convert to LeaderboardEntry format for validation
+      const usersWithRank = users.map((u, i) => ({
+        _id: u._id,
+        name: u.name,
+        points: u.points || 0,
+        badges: u.badges || [],
+        rank: i + 1,
+      }));
+      setAllUsers(usersWithRank);
+    } catch (error) {
+      console.error('Failed to fetch all users:', error);
+    }
+  }, []);
+
   const fetchInsight = useCallback(async () => {
     setIsLoadingInsight(true);
     try {
@@ -147,11 +164,11 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      await Promise.all([fetchTickets(), fetchLeaderboard(), fetchInsight()]);
+      await Promise.all([fetchTickets(), fetchLeaderboard(), fetchInsight(), fetchAllUsers()]);
       setIsLoading(false);
     };
     loadData();
-  }, [fetchTickets, fetchLeaderboard, fetchInsight]);
+  }, [fetchTickets, fetchLeaderboard, fetchInsight, fetchAllUsers]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -517,8 +534,6 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                   tickets={filteredTickets}
                   selectedTicket={selectedTicket}
                   onSelectTicket={setSelectedTicket}
-                  showHeatmap={showHeatmap} 
-                  onToggleHeatmap={() => setShowHeatmap(!showHeatmap)} 
                 />
               </div>
             )}
@@ -535,6 +550,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
             onClaim={(squad) => claimTicket(selectedTicket.id, squad)}
             onUnclaim={() => unclaimTicket(selectedTicket.id)}
             onComplete={(afterImageFile) => completeTicket(selectedTicket.id, afterImageFile)}
+            allUsers={allUsers}
           />
         )}
       </>
@@ -798,8 +814,6 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
               tickets={filteredTickets}
               selectedTicket={selectedTicket}
               onSelectTicket={setSelectedTicket}
-              showHeatmap={showHeatmap} 
-              onToggleHeatmap={() => setShowHeatmap(!showHeatmap)} 
             />
           </main>
         </div>
@@ -815,6 +829,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
           onClaim={(squad) => claimTicket(selectedTicket.id, squad)}
           onUnclaim={() => unclaimTicket(selectedTicket.id)}
           onComplete={(afterImageFile) => completeTicket(selectedTicket.id, afterImageFile)}
+          allUsers={allUsers}
         />
       )}
     </>

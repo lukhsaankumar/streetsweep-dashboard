@@ -75,12 +75,13 @@ export function CompletionDialog({ open, onOpenChange, onComplete, onReclaim, on
   };
 
   const handleReclaim = () => {
-    onReclaim?.();
+    // Reclaim does nothing - ticket stays claimed under current user
     onOpenChange(false);
     resetState();
   };
 
   const handleRelease = () => {
+    // Release calls unclaim/claim endpoint to release the ticket
     onRelease?.();
     onOpenChange(false);
     resetState();
