@@ -36,19 +36,10 @@ interface TicketDetailDrawerProps {
   onClose: () => void;
   onClaim: (squad?: Squad) => void;
   onUnclaim: () => void;
-  onComplete: (afterImageFile: File) => Promise<{ success: boolean; result?: any }>;
+  onComplete: (afterImageFile: File) => Promise<{ success: boolean; result?: any; pointsEarned?: number; halfPointsAwarded?: number }>;
   allUsers: LeaderboardEntry[];
 }
 
-interface TicketDetailDrawerProps {
-  userName: string;
-  userId: string;
-  ticket: Ticket;
-  onClose: () => void;
-  onClaim: (squad?: Squad) => void;
-  onUnclaim: () => void;
-  onComplete: (afterImageFile: File) => Promise<{ success: boolean; result?: any }>;
-}
 
 export function TicketDetailDrawer({ userName, userId, ticket, onClose, onClaim, onUnclaim, onComplete, allUsers }: TicketDetailDrawerProps) {
   const [isLoading, setIsLoading] = useState(false);
