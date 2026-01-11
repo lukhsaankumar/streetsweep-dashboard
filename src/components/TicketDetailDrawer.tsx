@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Ticket, TicketPriority } from '@/data/dummyTickets';
+import { Ticket, TicketPriority, Squad } from '@/data/dummyTickets';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -11,9 +11,12 @@ import {
   Check,
   Upload,
   ChevronRight,
-  Users
+  Users,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
@@ -34,7 +37,7 @@ interface TicketDetailDrawerProps {
   userName: string;
   ticket: Ticket;
   onClose: () => void;
-  onClaim: () => void;
+  onClaim: (squad?: Squad) => void;
   onUnclaim: () => void;
   onComplete: (afterImageUrl: string) => void;
 }
@@ -42,6 +45,10 @@ interface TicketDetailDrawerProps {
 export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUnclaim, onComplete }: TicketDetailDrawerProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showAfterImageSelect, setShowAfterImageSelect] = useState(false);
+  const [showSquadForm, setShowSquadForm] = useState(false);
+  const [squadName, setSquadName] = useState('');
+  const [squadMembers, setSquadMembers] = useState<string[]>([]);
+  const [newMember, setNewMember] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const priority = priorityConfig[ticket.priority];
@@ -57,13 +64,41 @@ export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUncla
     });
   };
 
-  const handleClaim = () => {
+  const handleAddMember = () => {
+    if (newMember.trim() && !squadMembers.includes(newMember.trim())) {
+      setSquadMembers([...squadMembers, newMember.trim()]);
+      setNewMember('');
+    }
+  };
+
+  const handleRemoveMember = (member: string) => {
+    setSquadMembers(squadMembers.filter(m => m !== member));
+  };
+
+  const handleClaim = (withSquad: boolean = false) => {
     setIsLoading(true);
-    onClaim();
-    toast({
-      title: 'Ticket Claimed!',
-      description: `You've claimed "${ticket.title}". Head to the location to clean it up!`,
-    });
+    
+    if (withSquad && squadName.trim()) {
+      const squad: Squad = {
+        name: squadName.trim(),
+        members: [userName, ...squadMembers],
+      };
+      onClaim(squad);
+      toast({
+        title: 'Squad Claim!',
+        description: `Squad "${squad.name}" has claimed this ticket!`,
+      });
+    } else {
+      onClaim();
+      toast({
+        title: 'Ticket Claimed!',
+        description: `You've claimed "${ticket.title}". Head to the location to clean it up!`,
+      });
+    }
+    
+    setShowSquadForm(false);
+    setSquadName('');
+    setSquadMembers([]);
     setIsLoading(false);
   };
 
@@ -98,12 +133,20 @@ export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUncla
 
   return (
     <AnimatePresence>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-background/50 backdrop-blur-sm z-[100]"
+        onClick={onClose}
+      />
       <motion.div
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed right-0 top-0 h-full w-full max-w-md bg-card border-l border-border shadow-2xl z-50 overflow-hidden flex flex-col"
+        className="fixed right-0 top-0 h-full w-full max-w-md bg-card border-l border-border shadow-2xl z-[101] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="p-4 border-b border-border flex items-center justify-between">
@@ -263,13 +306,99 @@ export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUncla
           )}
         </div>
 
+        {/* Squad Form */}
+        {showSquadForm && ticket.state === 'OPEN' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 border-t border-border bg-muted/50 space-y-4"
+          >
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Create Cleanup Squad
+            </h3>
+            
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Squad Name</label>
+              <Input
+                placeholder="e.g. Green Warriors"
+                value={squadName}
+                onChange={(e) => setSquadName(e.target.value)}
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Team Members</label>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  placeholder="Add member name"
+                  value={newMember}
+                  onChange={(e) => setNewMember(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddMember()}
+                />
+                <Button variant="outline" size="icon" onClick={handleAddMember}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              {/* Member list */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 px-2 py-1 bg-primary/10 rounded text-sm">
+                  <User className="w-3 h-3 text-primary" />
+                  <span className="text-foreground">{userName}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">(you)</span>
+                </div>
+                {squadMembers.map((member) => (
+                  <div key={member} className="flex items-center gap-2 px-2 py-1 bg-muted rounded text-sm">
+                    <User className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-foreground">{member}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-5 h-5 ml-auto text-muted-foreground hover:text-destructive"
+                      onClick={() => handleRemoveMember(member)}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowSquadForm(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => handleClaim(true)} 
+                disabled={!squadName.trim() || isLoading}
+                className="flex-1 gap-2"
+              >
+                <Users className="w-4 h-4" />
+                Claim as Squad
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
         {/* Actions */}
         <div className="p-4 border-t border-border bg-card">
-          {ticket.state === 'OPEN' && (
-            <Button onClick={handleClaim} disabled={isLoading} className="w-full gap-2" size="lg">
-              <ChevronRight className="w-5 h-5" />
-              Claim This Ticket
-            </Button>
+          {ticket.state === 'OPEN' && !showSquadForm && (
+            <div className="space-y-2">
+              <Button onClick={() => handleClaim(false)} disabled={isLoading} className="w-full gap-2" size="lg">
+                <ChevronRight className="w-5 h-5" />
+                Claim This Ticket
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowSquadForm(true)} 
+                disabled={isLoading} 
+                className="w-full gap-2"
+              >
+                <Users className="w-4 h-4" />
+                Claim with Squad
+              </Button>
+            </div>
           )}
 
           {ticket.state === 'CLAIMED' && isClaimedByMe && (
@@ -283,7 +412,7 @@ export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUncla
                 className="flex-1 gap-2"
               >
                 <Check className="w-5 h-5" />
-                Complete
+                Mark Complete
               </Button>
             </div>
           )}
