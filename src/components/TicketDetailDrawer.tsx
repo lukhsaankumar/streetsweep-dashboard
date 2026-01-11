@@ -419,6 +419,12 @@ export function TicketDetailDrawer({ userName, ticket, onClose, onClaim, onUncla
               </Button>
             </div>
           )}
+          
+          {ticket.state === 'CLAIMED' && isClaimedByMe && !showAfterImageSelect && (
+            <div className="text-center text-sm text-muted-foreground mt-2">
+              You have claimed this ticket
+            </div>
+          )}
 
           {ticket.state === 'CLAIMED' && !isClaimedByMe && (
             <div className="text-center text-muted-foreground py-2">

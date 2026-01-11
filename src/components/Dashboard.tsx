@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { TicketCard } from '@/components/TicketCard';
 import { MapView } from '@/components/MapView';
@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import type { Ticket, TicketPriority, TicketState, Squad, User, LeaderboardEntry } from '@/types/api';
-import { getTickets, resolveTicket, getLeaderboard } from '@/services/api';
+import { getTickets, resolveTicket, getLeaderboard, getInsight, claimTicket as claimTicketApi } from '@/services/api';
 
 type Tab = 'tickets' | 'insights' | 'leaderboard';
 type MobileView = 'list' | 'map';
@@ -39,6 +39,7 @@ interface DashboardProps {
 export function Dashboard({ user, onSignOut }: DashboardProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const selectedTicketRef = useRef<Ticket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('tickets');
@@ -48,6 +49,8 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   const [leaderboardTotal, setLeaderboardTotal] = useState(0);
   const [mobileView, setMobileView] = useState<MobileView>('list');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [insight, setInsight] = useState<string>('');
+  const [isLoadingInsight, setIsLoadingInsight] = useState(false);
   const isMobile = useIsMobile();
   
   // Filter state - default: only OPEN selected, all priorities
@@ -55,6 +58,11 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   const [selectedPriorities, setSelectedPriorities] = useState<Set<TicketPriority>>(new Set(['LOW', 'MEDIUM', 'HIGH']));
 
   const userName = user.name;
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedTicketRef.current = selectedTicket;
+  }, [selectedTicket]);
 
   const toggleState = (state: TicketState) => {
     setSelectedStates(prev => {
@@ -92,8 +100,9 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
     try {
       const data = await getTickets();
       setTickets(data);
-      if (selectedTicket) {
-        const updated = data.find(t => t.id === selectedTicket.id);
+      // Use ref to avoid dependency that causes infinite loop
+      if (selectedTicketRef.current) {
+        const updated = data.find(t => t.id === selectedTicketRef.current!.id);
         if (updated) setSelectedTicket(updated);
       }
     } catch (error) {
@@ -104,7 +113,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
         variant: 'destructive',
       });
     }
-  }, [selectedTicket]);
+  }, []); // No dependencies - uses ref instead
 
   const fetchLeaderboard = useCallback(async (page: number = 1) => {
     try {
@@ -117,18 +126,41 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
     }
   }, []);
 
+  const fetchInsight = useCallback(async () => {
+    setIsLoadingInsight(true);
+    try {
+      const data = await getInsight();
+      setInsight(data);
+    } catch (error) {
+      console.error('Failed to fetch insight:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load insights',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingInsight(false);
+    }
+  }, []);
+
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      await Promise.all([fetchTickets(), fetchLeaderboard()]);
+      await Promise.all([fetchTickets(), fetchLeaderboard(), fetchInsight()]);
       setIsLoading(false);
     };
     loadData();
-  }, [fetchTickets, fetchLeaderboard]);
+  }, [fetchTickets, fetchLeaderboard, fetchInsight]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchTickets(), fetchLeaderboard(leaderboardPage)]);
+    // Only refresh leaderboard and insights, not tickets
+    // Tickets are updated optimistically on local changes (claim/unclaim/create)
+    // and fetched from backend only after completion
+    await Promise.all([
+      fetchLeaderboard(leaderboardPage),
+      activeTab === 'insights' ? fetchInsight() : Promise.resolve()
+    ]);
     setIsRefreshing(false);
     toast({
       title: 'Refreshed',
@@ -136,53 +168,56 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
     });
   };
 
-  const claimTicket = useCallback((id: string, squad?: Squad) => {
-    // Note: The current API doesn't have a claim endpoint, so we simulate locally
-    // In production, you'd call an API endpoint here
-    const updated = tickets.map(t => 
-      t.id === id ? { 
-        ...t, 
-        state: 'CLAIMED' as const, 
-        claimedBy: squad ? squad.name : userName, 
-        claimedAt: new Date().toISOString(),
-        squad: squad 
-      } : t
-    );
-    setTickets(updated);
-    const found = updated.find(t => t.id === id);
-    if (found) setSelectedTicket(found);
-    
-    toast({
-      title: 'Ticket Claimed!',
-      description: `You've claimed this ticket. Head to the location to clean it up!`,
-    });
-  }, [tickets, userName]);
+  const claimTicket = useCallback(async (id: string, squad?: Squad) => {
+    try {
+      // Call backend API to claim ticket
+      await claimTicketApi(id, user._id);
+      
+      // Fetch updated tickets from backend
+      await fetchTickets();
+      
+      toast({
+        title: 'Ticket Claimed!',
+        description: `You've claimed this ticket. Head to the location to clean it up!`,
+      });
+    } catch (error) {
+      console.error('Failed to claim ticket:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to claim ticket',
+        variant: 'destructive',
+      });
+    }
+  }, [user._id, fetchTickets]);
 
-  const unclaimTicket = useCallback((id: string) => {
-    // Note: The current API doesn't have an unclaim endpoint, so we simulate locally
-    const updated = tickets.map(t => 
-      t.id === id ? { ...t, state: 'OPEN' as const, claimedBy: undefined, claimedAt: undefined, squad: undefined } : t
-    );
-    setTickets(updated);
-    const found = updated.find(t => t.id === id);
-    if (found) setSelectedTicket(found);
-    
-    toast({
-      title: 'Ticket Released',
-      description: 'The ticket is now available for others.',
-    });
-  }, [tickets]);
+  const unclaimTicket = useCallback(async (id: string) => {
+    try {
+      // Call backend API to unclaim ticket (same endpoint, toggles state)
+      await claimTicketApi(id, user._id);
+      
+      // Fetch updated tickets from backend
+      await fetchTickets();
+      
+      toast({
+        title: 'Ticket Released',
+        description: 'The ticket is now available for others.',
+      });
+    } catch (error) {
+      console.error('Failed to unclaim ticket:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to release ticket',
+        variant: 'destructive',
+      });
+    }
+  }, [user._id, fetchTickets]);
 
   const completeTicket = useCallback(async (id: string, afterImageUrl: string) => {
     try {
       await resolveTicket({ ticket_id: id, user_id: user._id });
       
-      const updated = tickets.map(t => 
-        t.id === id ? { ...t, state: 'COMPLETED' as const, afterImageUrl, completedAt: new Date().toISOString() } : t
-      );
-      setTickets(updated);
-      const found = updated.find(t => t.id === id);
-      if (found) setSelectedTicket(found);
+      // Fetch updated tickets from backend after completion
+      await fetchTickets();
       
       toast({
         title: '🎉 Cleanup Complete!',
@@ -199,7 +234,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
         variant: 'destructive',
       });
     }
-  }, [tickets, user._id, fetchLeaderboard, leaderboardPage]);
+  }, [user._id, fetchTickets, fetchLeaderboard, leaderboardPage]);
 
   const handleTicketCreated = useCallback((newTicket: Ticket) => {
     setTickets(prev => [newTicket, ...prev]);
@@ -397,9 +432,42 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                             <p className="text-xs text-muted-foreground">Done</p>
                           </div>
                         </div>
-                        <p className="text-sm text-muted-foreground text-center py-6">
-                          Charts coming soon...
-                        </p>
+                        
+                        {/* AI Insights */}
+                        <div className="mt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold text-sm flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4 text-primary" />
+                              AI-Generated Insights
+                            </h3>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={fetchInsight}
+                              disabled={isLoadingInsight}
+                            >
+                              {isLoadingInsight ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </div>
+                          
+                          {isLoadingInsight ? (
+                            <div className="flex items-center justify-center py-8">
+                              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                            </div>
+                          ) : insight ? (
+                            <div className="bg-muted/50 rounded-lg p-4 text-sm text-foreground whitespace-pre-wrap">
+                              {insight}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-6">
+                              No insights available yet.
+                            </p>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -626,9 +694,42 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                           <p className="text-xs text-muted-foreground">Done</p>
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground text-center py-8">
-                        Charts coming soon...
-                      </p>
+                      
+                      {/* AI Insights */}
+                      <div className="mt-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-semibold flex items-center gap-2">
+                            <TrendingUp className="w-5 h-5 text-primary" />
+                            AI-Generated Insights
+                          </h3>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={fetchInsight}
+                            disabled={isLoadingInsight}
+                          >
+                            {isLoadingInsight ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                        
+                        {isLoadingInsight ? (
+                          <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                          </div>
+                        ) : insight ? (
+                          <div className="bg-muted/50 rounded-lg p-6 text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                            {insight}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-8">
+                            No insights available yet.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
 

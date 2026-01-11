@@ -171,14 +171,15 @@ function transformTicket(apiTicket: ApiTicket): Ticket {
   else if (apiTicket.claimed) state = 'CLAIMED';
   
   // Generate a readable title from description
-  const title = apiTicket.description.length > 50 
-    ? apiTicket.description.substring(0, 47) + '...'
-    : apiTicket.description || 'Litter Report';
+  const description = apiTicket.description || 'Litter Report';
+  const title = description.length > 50 
+    ? description.substring(0, 47) + '...'
+    : description;
   
   return {
     id: apiTicket._id,
     title,
-    description: apiTicket.description,
+    description,
     priority,
     lat: apiTicket.location.lat,
     lng: apiTicket.location.lon,
@@ -253,6 +254,20 @@ export async function resolveTicket(data: ResolveTicketRequest): Promise<{ messa
   return json;
 }
 
+export async function claimTicket(ticket_id: string, user_id: string): Promise<{ message: string; ticket_id: string; claimed: boolean; claimed_by: string }> {
+  const res = await fetchWithAuth(`/claim?ticket_id=${encodeURIComponent(ticket_id)}&user_id=${encodeURIComponent(user_id)}`, {
+    method: 'POST',
+  });
+  
+  const json = await res.json();
+  
+  if (json.error) {
+    throw new Error(json.error);
+  }
+  
+  return json;
+}
+
 export async function classifyImage(imageFile: File): Promise<ClassifyResponse> {
   const token = getStoredToken();
   const formData = new FormData();
@@ -285,4 +300,17 @@ export async function healthCheck(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ==================== INSIGHTS ====================
+
+export async function getInsight(): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/insight`);
+  const json = await res.json();
+  
+  if (json.error) {
+    throw new Error(json.error);
+  }
+  
+  return json.insight || 'No insights available yet.';
 }

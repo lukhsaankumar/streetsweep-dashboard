@@ -106,6 +106,18 @@ export interface ResolveTicketRequest {
   user_id: string;
 }
 
+export interface ClaimTicketRequest {
+  ticket_id: string;
+  user_id: string;
+}
+
+export interface ClaimTicketResponse {
+  message: string;
+  ticket_id: string;
+  claimed: boolean;
+  claimed_by: string;
+}
+
 export interface ClassifyResponse {
   severity: number | null;
   image_base64: string;

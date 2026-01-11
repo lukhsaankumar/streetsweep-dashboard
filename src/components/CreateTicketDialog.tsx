@@ -138,6 +138,7 @@ export function CreateTicketDialog({ onTicketCreated }: CreateTicketDialogProps)
       };
 
       const response = await createTicket({
+        image_url: imagePreview || '',
         image_base64: imageBase64,
         location: {
           lat: baseLat,
