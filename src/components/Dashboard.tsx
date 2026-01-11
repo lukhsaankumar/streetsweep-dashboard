@@ -33,6 +33,8 @@ import { getTickets, resolveTicket, getLeaderboard, getInsight, claimTicket as c
 type Tab = 'tickets' | 'insights' | 'leaderboard';
 type MobileView = 'list' | 'map';
 type PrioritySort = 'high-to-low' | 'low-to-high';
+type DateSort = 'newest' | 'oldest' | 'none';
+type SortBy = 'priority' | 'date';
 
 interface DashboardProps {
   user: User;
@@ -70,6 +72,8 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
   const [selectedStates, setSelectedStates] = useState<Set<TicketState>>(new Set(['OPEN']));
   const [selectedPriorities, setSelectedPriorities] = useState<Set<TicketPriority>>(new Set(['LOW', 'MEDIUM', 'HIGH']));
   const [prioritySort, setPrioritySort] = useState<PrioritySort>('high-to-low');
+  const [dateSort, setDateSort] = useState<DateSort>('none');
+  const [sortBy, setSortBy] = useState<SortBy>('priority');
 
   const userName = user.name;
 
@@ -115,13 +119,19 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
       return stateMatch && priorityMatch;
     });
     
-    // Sort by priority
+    // Sort based on selected sort type
     return filtered.sort((a, b) => {
+      if (sortBy === 'date' && dateSort !== 'none') {
+        const aDate = new Date(a.createdAt).getTime();
+        const bDate = new Date(b.createdAt).getTime();
+        return dateSort === 'newest' ? bDate - aDate : aDate - bDate;
+      }
+      // Default: sort by priority
       const aOrder = priorityOrder[a.priority];
       const bOrder = priorityOrder[b.priority];
       return prioritySort === 'high-to-low' ? bOrder - aOrder : aOrder - bOrder;
     });
-  }, [tickets, selectedStates, selectedPriorities, prioritySort]);
+  }, [tickets, selectedStates, selectedPriorities, prioritySort, dateSort, sortBy]);
 
   const fetchTickets = useCallback(async () => {
     try {
@@ -457,14 +467,38 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                             ))}
                           </div>
                           
-                          {/* Sort Option */}
-                          <div className="pt-1.5 border-t border-border mt-1.5">
+                          {/* Sort Options */}
+                          <div className="pt-1.5 border-t border-border mt-1.5 flex flex-wrap gap-1.5">
                             <button
-                              onClick={() => setPrioritySort(prev => prev === 'high-to-low' ? 'low-to-high' : 'high-to-low')}
-                              className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-background border border-border text-muted-foreground hover:border-primary/50 transition-colors"
+                              onClick={() => {
+                                setSortBy('priority');
+                                setPrioritySort(prev => prev === 'high-to-low' ? 'low-to-high' : 'high-to-low');
+                                setDateSort('none');
+                              }}
+                              className={cn(
+                                "flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full border transition-colors",
+                                sortBy === 'priority'
+                                  ? "bg-primary/20 border-primary text-primary"
+                                  : "bg-background border-border text-muted-foreground hover:border-primary/50"
+                              )}
                             >
                               <ArrowUpDown className="w-3 h-3" />
-                              {prioritySort === 'high-to-low' ? 'High → Low' : 'Low → High'}
+                              Priority: {prioritySort === 'high-to-low' ? 'High→Low' : 'Low→High'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSortBy('date');
+                                setDateSort(prev => prev === 'newest' ? 'oldest' : 'newest');
+                              }}
+                              className={cn(
+                                "flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full border transition-colors",
+                                sortBy === 'date'
+                                  ? "bg-primary/20 border-primary text-primary"
+                                  : "bg-background border-border text-muted-foreground hover:border-primary/50"
+                              )}
+                            >
+                              <ArrowUpDown className="w-3 h-3" />
+                              Date: {dateSort === 'oldest' ? 'Oldest' : 'Newest'}
                             </button>
                           </div>
                         </div>
@@ -725,16 +759,42 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
                         </div>
                       </div>
 
-                      {/* Sort Option */}
+                      {/* Sort Options */}
                       <div className="space-y-1.5">
-                        <p className="text-xs text-muted-foreground">Sort by Priority</p>
-                        <button
-                          onClick={() => setPrioritySort(prev => prev === 'high-to-low' ? 'low-to-high' : 'high-to-low')}
-                          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full bg-background border border-border text-muted-foreground hover:border-primary/50 transition-colors"
-                        >
-                          <ArrowUpDown className="w-3.5 h-3.5" />
-                          {prioritySort === 'high-to-low' ? 'High → Low' : 'Low → High'}
-                        </button>
+                        <p className="text-xs text-muted-foreground">Sort by</p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => {
+                              setSortBy('priority');
+                              setPrioritySort(prev => prev === 'high-to-low' ? 'low-to-high' : 'high-to-low');
+                              setDateSort('none');
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors",
+                              sortBy === 'priority'
+                                ? "bg-primary/20 border-primary text-primary"
+                                : "bg-background border-border text-muted-foreground hover:border-primary/50"
+                            )}
+                          >
+                            <ArrowUpDown className="w-3.5 h-3.5" />
+                            Priority: {prioritySort === 'high-to-low' ? 'High → Low' : 'Low → High'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSortBy('date');
+                              setDateSort(prev => prev === 'newest' ? 'oldest' : 'newest');
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors",
+                              sortBy === 'date'
+                                ? "bg-primary/20 border-primary text-primary"
+                                : "bg-background border-border text-muted-foreground hover:border-primary/50"
+                            )}
+                          >
+                            <ArrowUpDown className="w-3.5 h-3.5" />
+                            Date: {dateSort === 'oldest' ? 'Oldest First' : 'Newest First'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                       
