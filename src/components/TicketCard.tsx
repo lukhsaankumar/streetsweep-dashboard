@@ -47,26 +47,26 @@ export function TicketCard({ ticket, isSelected, onClick }: TicketCardProps) {
       )}
       aria-label={`Ticket: ${ticket.title}, Priority: ${priority.label}, Status: ${state.label}`}
     >
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <h3 className="font-semibold text-foreground line-clamp-1">{ticket.title}</h3>
-        <div className="flex gap-2 flex-shrink-0">
-          <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium border", priority.className)}>
+      <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
+        <h3 className="font-semibold text-foreground line-clamp-1 text-sm sm:text-base">{ticket.title}</h3>
+        <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+          <span className={cn("px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium border", priority.className)}>
             {priority.label}
           </span>
-          <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", state.className)}>
+          <span className={cn("px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium", state.className)}>
             {state.label}
           </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+      <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
         <div className="flex items-center gap-1">
-          <Camera className="w-3.5 h-3.5" />
-          <span className="truncate max-w-[120px]">{ticket.cameraName}</span>
+          <Camera className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          <span className="truncate max-w-[80px] sm:max-w-[120px]">{ticket.cameraName}</span>
         </div>
         <div className="flex items-center gap-1">
-          <Clock className="w-3.5 h-3.5" />
-          <span>{formatDate(ticket.createdAt)}</span>
+          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          <span className="text-[10px] sm:text-sm">{formatDate(ticket.createdAt)}</span>
         </div>
       </div>
 
