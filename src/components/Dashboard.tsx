@@ -20,7 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Ticket, VolunteerStats, dummyLeaderboard, dummyTickets } from '@/data/dummyTickets';
+import { Ticket, VolunteerStats, Squad, dummyLeaderboard, dummyTickets } from '@/data/dummyTickets';
 
 type Tab = 'tickets' | 'insights' | 'leaderboard';
 
@@ -66,9 +66,15 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
     }
   }, [selectedTicket]);
 
-  const claimTicket = useCallback((id: string) => {
+  const claimTicket = useCallback((id: string, squad?: Squad) => {
     const updated = tickets.map(t => 
-      t.id === id ? { ...t, state: 'CLAIMED' as const, claimedBy: userName, claimedAt: new Date().toISOString() } : t
+      t.id === id ? { 
+        ...t, 
+        state: 'CLAIMED' as const, 
+        claimedBy: squad ? squad.name : userName, 
+        claimedAt: new Date().toISOString(),
+        squad: squad 
+      } : t
     );
     saveTickets(updated);
     setTickets(updated);
@@ -274,7 +280,7 @@ export function Dashboard({ userName, onSignOut }: DashboardProps) {
             userName={userName}
             ticket={selectedTicket}
             onClose={() => setSelectedTicket(null)}
-            onClaim={() => claimTicket(selectedTicket.id)}
+            onClaim={(squad) => claimTicket(selectedTicket.id, squad)}
             onUnclaim={() => unclaimTicket(selectedTicket.id)}
             onComplete={(afterImageUrl) => completeTicket(selectedTicket.id, afterImageUrl)}
           />
