@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Ticket, TicketPriority } from '@/types/api';
-import { Locate, Flame } from 'lucide-react';
+import { Locate } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -91,11 +91,9 @@ interface MapViewProps {
   tickets: Ticket[];
   selectedTicket: Ticket | null;
   onSelectTicket: (ticket: Ticket) => void;
-  showHeatmap?: boolean;
-  onToggleHeatmap?: () => void;
 }
 
-export function MapView({ tickets, selectedTicket, onSelectTicket, showHeatmap, onToggleHeatmap }: MapViewProps) {
+export function MapView({ tickets, selectedTicket, onSelectTicket }: MapViewProps) {
   // Generate a key based on ticket IDs to force re-render when filters change
   const ticketsKey = useMemo(() => tickets.map(t => t.id).sort().join(','), [tickets]);
   
@@ -110,23 +108,6 @@ export function MapView({ tickets, selectedTicket, onSelectTicket, showHeatmap, 
 
   return (
     <div className="relative h-full w-full rounded-lg overflow-hidden border border-border">
-      {/* Heatmap toggle */}
-      <div className="absolute top-3 left-3 z-[1000]">
-        <Button
-          size="sm"
-          variant={showHeatmap ? "default" : "outline"}
-          onClick={onToggleHeatmap}
-          className={cn(
-            "gap-2",
-            !showHeatmap && "bg-card border-border hover:bg-muted"
-          )}
-          aria-pressed={showHeatmap}
-          aria-label="Toggle hotspot heatmap"
-        >
-          <Flame className="w-4 h-4" />
-          Hotspots
-        </Button>
-      </div>
 
       <MapContainer
         center={center}
@@ -138,24 +119,9 @@ export function MapView({ tickets, selectedTicket, onSelectTicket, showHeatmap, 
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        
+
         <MapController selectedTicket={selectedTicket} />
         <LocateButton />
-
-        {/* Heatmap overlay (simplified) */}
-        {showHeatmap && tickets.map((ticket) => (
-          <Circle
-            key={`heat-${ticket.id}`}
-            center={[ticket.lat, ticket.lng]}
-            radius={ticket.severityScore * 5}
-            pathOptions={{
-              color: 'transparent',
-              fillColor: ticket.severityScore >= 70 ? '#ef4444' : 
-                         ticket.severityScore >= 40 ? '#f59e0b' : '#22c55e',
-              fillOpacity: 0.3 * (ticket.severityScore / 100),
-            }}
-          />
-        ))}
 
         {/* Ticket markers */}
         {tickets.map((ticket) => (
@@ -177,7 +143,7 @@ export function MapView({ tickets, selectedTicket, onSelectTicket, showHeatmap, 
                     ticket.priority === 'HIGH' ? "text-red-600" :
                     ticket.priority === 'MEDIUM' ? "text-amber-600" : "text-green-600"
                   )}>
-                    {ticket.priority} Priority
+                    {ticket.priority} Severity
                   </span>
                   {' · '}
                   Severity: {ticket.severityScore}%

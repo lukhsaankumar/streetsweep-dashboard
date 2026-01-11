@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Ticket, TicketPriority, Squad } from '@/types/api';
+import type { Ticket, TicketPriority, Squad, LeaderboardEntry } from '@/types/api';
 import { getUserById } from '@/services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -14,7 +14,8 @@ import {
   Users,
   Plus,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,10 +24,21 @@ import { toast } from '@/hooks/use-toast';
 import { CompletionDialog } from '@/components/CompletionDialog';
 
 const priorityConfig: Record<TicketPriority, { label: string; className: string }> = {
-  HIGH: { label: 'High Priority', className: 'priority-high' },
-  MEDIUM: { label: 'Medium Priority', className: 'priority-medium' },
-  LOW: { label: 'Low Priority', className: 'priority-low' },
+  HIGH: { label: 'High Severity', className: 'priority-high' },
+  MEDIUM: { label: 'Medium Severity', className: 'priority-medium' },
+  LOW: { label: 'Low Severity', className: 'priority-low' },
 };
+
+interface TicketDetailDrawerProps {
+  userName: string;
+  userId: string;
+  ticket: Ticket;
+  onClose: () => void;
+  onClaim: (squad?: Squad) => void;
+  onUnclaim: () => void;
+  onComplete: (afterImageFile: File) => Promise<{ success: boolean; result?: any }>;
+  allUsers: LeaderboardEntry[];
+}
 
 interface TicketDetailDrawerProps {
   userName: string;
@@ -38,13 +50,14 @@ interface TicketDetailDrawerProps {
   onComplete: (afterImageFile: File) => Promise<{ success: boolean; result?: any }>;
 }
 
-export function TicketDetailDrawer({ userName, userId, ticket, onClose, onClaim, onUnclaim, onComplete }: TicketDetailDrawerProps) {
+export function TicketDetailDrawer({ userName, userId, ticket, onClose, onClaim, onUnclaim, onComplete, allUsers }: TicketDetailDrawerProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [showSquadForm, setShowSquadForm] = useState(false);
   const [squadName, setSquadName] = useState('');
   const [squadMembers, setSquadMembers] = useState<string[]>([]);
   const [newMember, setNewMember] = useState('');
+  const [memberError, setMemberError] = useState<string | null>(null);
   const [claimedByName, setClaimedByName] = useState<string | null>(null);
 
   const priority = priorityConfig[ticket.priority];
@@ -83,14 +96,32 @@ export function TicketDetailDrawer({ userName, userId, ticket, onClose, onClaim,
   };
 
   const handleAddMember = () => {
-    if (newMember.trim() && !squadMembers.includes(newMember.trim())) {
-      setSquadMembers([...squadMembers, newMember.trim()]);
-      setNewMember('');
+    const trimmedMember = newMember.trim();
+    if (!trimmedMember) return;
+    
+    // Check if user exists in the system
+    const userExists = allUsers.some(u => 
+      u.name.toLowerCase() === trimmedMember.toLowerCase()
+    );
+    
+    if (!userExists) {
+      setMemberError('This groupmate is invalid');
+      return;
     }
+    
+    if (squadMembers.includes(trimmedMember)) {
+      setMemberError('Member already added');
+      return;
+    }
+    
+    setSquadMembers([...squadMembers, trimmedMember]);
+    setNewMember('');
+    setMemberError(null);
   };
 
   const handleRemoveMember = (member: string) => {
     setSquadMembers(squadMembers.filter(m => m !== member));
+    setMemberError(null);
   };
 
   const handleClaim = (withSquad: boolean = false) => {
@@ -306,13 +337,24 @@ export function TicketDetailDrawer({ userName, userId, ticket, onClose, onClaim,
                   <Input
                     placeholder="Add member name"
                     value={newMember}
-                    onChange={(e) => setNewMember(e.target.value)}
+                    onChange={(e) => {
+                      setNewMember(e.target.value);
+                      setMemberError(null);
+                    }}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddMember()}
+                    className={memberError ? 'border-destructive' : ''}
                   />
                   <Button variant="outline" size="icon" onClick={handleAddMember}>
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
+                
+                {memberError && (
+                  <div className="flex items-center gap-1 text-xs text-destructive mb-2">
+                    <AlertCircle className="w-3 h-3" />
+                    {memberError}
+                  </div>
+                )}
                 
                 {/* Member list */}
                 <div className="space-y-1">

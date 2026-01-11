@@ -10,9 +10,9 @@ interface TicketCardProps {
 }
 
 const priorityConfig: Record<TicketPriority, { label: string; className: string }> = {
-  HIGH: { label: 'High', className: 'priority-high' },
-  MEDIUM: { label: 'Medium', className: 'priority-medium' },
-  LOW: { label: 'Low', className: 'priority-low' },
+  HIGH: { label: 'High Severity', className: 'priority-high' },
+  MEDIUM: { label: 'Medium Severity', className: 'priority-medium' },
+  LOW: { label: 'Low Severity', className: 'priority-low' },
 };
 
 const stateConfig = {
@@ -48,7 +48,7 @@ export function TicketCard({ ticket, isSelected, onClick }: TicketCardProps) {
       aria-label={`Ticket: ${ticket.title}, Priority: ${priority.label}, Status: ${state.label}`}
     >
       <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
-        <h3 className="font-semibold text-foreground line-clamp-1 text-sm sm:text-base">{ticket.title}</h3>
+        <h3 className="font-semibold text-foreground text-sm sm:text-base">{ticket.title}</h3>
         <div className="flex gap-1 sm:gap-2 flex-shrink-0">
           <span className={cn("px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium border", priority.className)}>
             {priority.label}
