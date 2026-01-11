@@ -213,7 +213,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
     }
   }, [user._id, fetchTickets]);
 
-  const completeTicket = useCallback(async (id: string, afterImageFile: File) => {
+  const completeTicket = useCallback(async (id: string, afterImageFile: File): Promise<{ success: boolean; result?: any }> => {
     try {
       const ticket = tickets.find(t => t.id === id);
       if (!ticket) {
@@ -224,33 +224,28 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
       const result = await compareImages(ticket.beforeImageUrl, afterImageFile, id);
       
       // Check if comparison was successful (returns true) or if it's an object with details
-      if (result === true) {
+      if (result === true || (typeof result === 'object' && result.same_location && result.cleanup_successful)) {
         // Perfect match - same location and cleanup successful
         await resolveTicket({ ticket_id: id, user_id: user._id });
-      } else if (typeof result === 'object') {
-        // Got comparison details - still resolve the ticket
-        await resolveTicket({ ticket_id: id, user_id: user._id });
         
-        // Show warning if location or cleanup verification failed
-        if (!result.same_location || !result.cleanup_successful) {
-          toast({
-            title: 'Warning',
-            description: 'Image verification had issues, but ticket was still marked complete.',
-            variant: 'default',
-          });
-        }
+        // Fetch updated tickets from backend after completion
+        await fetchTickets();
+        
+        toast({
+          title: '🎉 Cleanup Complete!',
+          description: 'Amazing work! Thank you for helping clean up the community.',
+        });
+        
+        // Refresh leaderboard after completion
+        fetchLeaderboard(leaderboardPage);
+        
+        return { success: true };
+      } else {
+        // Cleanup not successful - ticket updated but not resolved
+        await fetchTickets();
+        
+        return { success: false, result };
       }
-      
-      // Fetch updated tickets from backend after completion
-      await fetchTickets();
-      
-      toast({
-        title: '🎉 Cleanup Complete!',
-        description: 'Amazing work! Thank you for helping clean up the community.',
-      });
-      
-      // Refresh leaderboard after completion
-      fetchLeaderboard(leaderboardPage);
     } catch (error) {
       console.error('Failed to complete ticket:', error);
       toast({
@@ -258,6 +253,7 @@ export function Dashboard({ user, onSignOut }: DashboardProps) {
         description: error instanceof Error ? error.message : 'Failed to mark ticket as complete',
         variant: 'destructive',
       });
+      return { success: false };
     }
   }, [tickets, user._id, fetchTickets, fetchLeaderboard, leaderboardPage]);
 

@@ -35,7 +35,7 @@ interface TicketDetailDrawerProps {
   onClose: () => void;
   onClaim: (squad?: Squad) => void;
   onUnclaim: () => void;
-  onComplete: (afterImageFile: File) => void;
+  onComplete: (afterImageFile: File) => Promise<{ success: boolean; result?: any }>;
 }
 
 export function TicketDetailDrawer({ userName, userId, ticket, onClose, onClaim, onUnclaim, onComplete }: TicketDetailDrawerProps) {
@@ -130,11 +130,11 @@ export function TicketDetailDrawer({ userName, userId, ticket, onClose, onClaim,
     setIsLoading(false);
   };
 
-  const handleComplete = (afterImageFile: File) => {
+  const handleComplete = async (afterImageFile: File) => {
     setIsLoading(true);
-    onComplete(afterImageFile);
-    setShowCompletionDialog(false);
+    const result = await onComplete(afterImageFile);
     setIsLoading(false);
+    return result;
   };
 
   return (
@@ -419,6 +419,8 @@ export function TicketDetailDrawer({ userName, userId, ticket, onClose, onClaim,
         open={showCompletionDialog}
         onOpenChange={setShowCompletionDialog}
         onComplete={handleComplete}
+        onReclaim={handleClaim}
+        onRelease={handleUnclaim}
         ticketTitle={ticket.title}
       />
     </>

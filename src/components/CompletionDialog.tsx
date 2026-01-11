@@ -12,16 +12,21 @@ import { cn } from '@/lib/utils';
 interface CompletionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onComplete: (afterImageFile: File) => void;
+  onComplete: (afterImageFile: File) => Promise<{ success: boolean; result?: any }>;
+  onReclaim?: () => void;
+  onRelease?: () => void;
   ticketTitle: string;
 }
 
 
-export function CompletionDialog({ open, onOpenChange, onComplete, ticketTitle }: CompletionDialogProps) {
+export function CompletionDialog({ open, onOpenChange, onComplete, onReclaim, onRelease, ticketTitle }: CompletionDialogProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedPreview, setUploadedPreview] = useState<string | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const [resultSuccess, setResultSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,22 +43,47 @@ export function CompletionDialog({ open, onOpenChange, onComplete, ticketTitle }
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (selectedFile) {
-      onComplete(selectedFile);
-      onOpenChange(false);
-      // Reset state
-      setSelectedImage(null);
-      setSelectedFile(null);
-      setUploadedPreview(null);
+      setIsSubmitting(true);
+      const result = await onComplete(selectedFile);
+      setIsSubmitting(false);
+      
+      if (result.success) {
+        // Success - close dialog
+        onOpenChange(false);
+        resetState();
+      } else {
+        // Failed - show result screen
+        setResultSuccess(false);
+        setShowResult(true);
+      }
     }
+  };
+
+  const resetState = () => {
+    setSelectedImage(null);
+    setSelectedFile(null);
+    setUploadedPreview(null);
+    setShowResult(false);
+    setResultSuccess(false);
   };
 
   const handleClose = () => {
     onOpenChange(false);
-    setSelectedImage(null);
-    setSelectedFile(null);
-    setUploadedPreview(null);
+    resetState();
+  };
+
+  const handleReclaim = () => {
+    onReclaim?.();
+    onOpenChange(false);
+    resetState();
+  };
+
+  const handleRelease = () => {
+    onRelease?.();
+    onOpenChange(false);
+    resetState();
   };
 
   return (
@@ -62,14 +92,35 @@ export function CompletionDialog({ open, onOpenChange, onComplete, ticketTitle }
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Check className="w-5 h-5 text-primary" />
-            Complete Cleanup
+            {showResult ? 'Cleanup Review' : 'Complete Cleanup'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 mt-2">
-          <p className="text-sm text-muted-foreground">
-            Upload a photo showing the area after cleanup for <span className="font-medium text-foreground">"{ticketTitle}"</span>
-          </p>
+        {showResult ? (
+          <div className="space-y-4 mt-2">
+            <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4">
+              <p className="text-sm font-medium text-yellow-600 dark:text-yellow-500 mb-2">
+                You missed some spots
+              </p>
+              <p className="text-sm text-muted-foreground">
+                The ticket has been updated based on what you missed. You can reclaim it to finish the job or release it for someone else.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={handleRelease} className="flex-1">
+                Release Ticket
+              </Button>
+              <Button onClick={handleReclaim} className="flex-1">
+                Reclaim & Retry
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 mt-2">
+            <p className="text-sm text-muted-foreground">
+              Upload a photo showing the area after cleanup for <span className="font-medium text-foreground">"{ticketTitle}"</span>
+            </p>
 
           {/* Upload Section */}
           <div className="space-y-3">
@@ -136,19 +187,29 @@ export function CompletionDialog({ open, onOpenChange, onComplete, ticketTitle }
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">
-            <Button variant="outline" onClick={handleClose} className="flex-1">
+            <Button variant="outline" onClick={handleClose} className="flex-1" disabled={isSubmitting}>
               Cancel
             </Button>
             <Button 
               onClick={handleSubmit} 
-              disabled={!selectedImage}
+              disabled={!selectedImage || isSubmitting}
               className="flex-1 gap-2"
             >
-              <Check className="w-4 h-4" />
-              Complete
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  Complete
+                </>
+              )}
             </Button>
           </div>
-        </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
